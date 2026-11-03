@@ -1,3 +1,4 @@
+<img width="1080" height="1350" alt="Archivverwaltung GitHub Teaserbild" src="https://github.com/user-attachments/assets/c1fffbc1-cf31-4b2f-b174-196192b79c53" />
 Die Drei ??? – Archivverwaltung
 
 Eine eigenständige Archivverwaltung für alle, die sich intensiver mit den Hörspielfolgen der **Die drei ???** beschäftigen und Informationen rund um die Serie strukturiert erfassen, verwalten und miteinander verknüpfen möchten.
@@ -74,6 +75,8 @@ da es sich um ein privates, nicht kommerzielles Projekt handelt.
 Feedback und Weiterentwicklung
 
 Da das Projekt mithilfe von Vibe Coding entstanden ist und ich die Anwendung kontinuierlich weiterentwickeln möchte, freue ich mich über Rückmeldungen, Verbesserungsvorschläge und Hinweise auf Fehler.
+
+
 
 Viel Spaß beim Archivieren und Entdecken!
 
