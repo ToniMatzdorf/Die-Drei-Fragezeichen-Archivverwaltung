@@ -76,6 +76,17 @@ Feedback und Weiterentwicklung
 
 Da das Projekt mithilfe von Vibe Coding entstanden ist und ich die Anwendung kontinuierlich weiterentwickeln möchte, freue ich mich über Rückmeldungen, Verbesserungsvorschläge und Hinweise auf Fehler.
 
+<img width="1913" height="1154" alt="Startseite" src="https://github.com/user-attachments/assets/812b54cb-8b4f-49d5-866b-1860909f5c78" />
+
+<img width="1312" height="1075" alt="Anlegen einer Folge" src="https://github.com/user-attachments/assets/426f14d1-d376-4321-b2e2-3012087ae003" />
+
+<img width="1266" height="1129" alt="Fall Details" src="https://github.com/user-attachments/assets/57375b9e-8d2b-48a2-b978-1e4f8df3938e" />
+
+<img width="1275" height="1008" alt="Personen und Figuren" src="https://github.com/user-attachments/assets/62d435e1-a363-4d69-aa32-912e84f90f04" />
+
+<img width="1286" height="1047" alt="Sprecher" src="https://github.com/user-attachments/assets/6a1075c5-19df-4a1c-9e93-970d3eb8714e" />
+
+<img width="462" height="1079" alt="Fallakte Export" src="https://github.com/user-attachments/assets/e1eb575b-e90a-4589-8e77-6fdc869afa26" />
 
 
 Viel Spaß beim Archivieren und Entdecken!
