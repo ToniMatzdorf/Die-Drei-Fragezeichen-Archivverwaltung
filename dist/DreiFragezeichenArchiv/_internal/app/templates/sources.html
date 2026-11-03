@@ -1,0 +1,717 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quellenverwaltung – Die Drei ??? Archiv</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #080808;
+            color: #eeeeee;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            border-bottom: 2px solid #b51f2a;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        header img {
+            width: 100px;
+            max-height: 120px;
+            object-fit: contain;
+        }
+
+        .heading {
+            text-align: center;
+            flex: 1;
+        }
+
+        h1 {
+            color: white;
+            margin: 0;
+            font-size: 26px;
+        }
+
+        h2 {
+            color: #e3424b;
+            margin-top: 0;
+        }
+
+        h3 { color: #e3424b; }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 25px;
+        }
+
+        button {
+            background: #171717;
+            color: #eeeeee;
+            border: 1px solid #555;
+            padding: 10px 14px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        button:hover {
+            border-color: #e3424b;
+            color: #ffffff;
+        }
+
+        button.primary {
+            background: #a51e29;
+            border-color: #c52b37;
+        }
+
+        button.danger { color: #ff7777; }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            margin: 6px 0 14px;
+            background: #151515;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 3px;
+        }
+
+        textarea {
+            min-height: 85px;
+            resize: vertical;
+        }
+
+        label {
+            display: block;
+            color: #bbbbbb;
+            font-size: 14px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(260px, 0.8fr) minmax(400px, 1.5fr);
+            gap: 20px;
+        }
+
+        .panel {
+            background: #101010;
+            border: 1px solid #333;
+            padding: 18px;
+            border-radius: 4px;
+        }
+
+        .source-item {
+            padding: 12px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+        }
+
+        .source-item:hover, .source-item.active {
+            background: #242020;
+            border-left: 3px solid #b51f2a;
+        }
+
+        .source-item strong { color: white; }
+
+        .muted {
+            color: #999;
+            font-size: 13px;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .message {
+            margin: 12px 0;
+            color: #83c8ff;
+            white-space: pre-wrap;
+        }
+
+        .assignment {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .assignment-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .assignment-actions button {
+            float: none;
+        }
+
+        .assignment-edit-notes {
+            margin-top: 10px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 15px;
+        }
+
+        .full { grid-column: 1 / -1; }
+
+        @media (max-width: 850px) {
+            .layout { grid-template-columns: 1fr; }
+            header img { width: 65px; }
+            h1 { font-size: 19px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .full { grid-column: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <img src="/static/images/leuchtturm_archiv_header.png" alt="Leuchtturm">
+    <div class="heading">
+        <h1>DIE DREI ???</h1>
+        <h2>ARCHIVVERWALTUNG</h2>
+        <div class="muted">Quellenverwaltung</div>
+    </div>
+    <img src="/static/images/haus_archiv_header.png" alt="Haus">
+</header>
+
+<nav>
+    <button onclick="location.href='/'">Startseite</button>
+    <button onclick="location.href='/episodes'">Hörspielfälle</button>
+    <button onclick="location.href='/persons'">Personen</button>
+    <button onclick="location.href='/speakers'">Sprecher</button>
+    <button onclick="location.href='/places'">Schauplätze</button>
+    <button onclick="location.href='/objects'">Gegenstände</button>
+    <button onclick="location.href='/creatures'">Kreaturen</button>
+    <button onclick="location.href='/organizations'">Organisationen</button>
+    <button onclick="location.href='/keywords'">Schlagwörter</button>
+</nav>
+
+<div class="layout">
+
+    <section class="panel">
+        <h2>Quellenbestand</h2>
+
+        <label for="search">Quelle suchen</label>
+        <input id="search" placeholder="Titel, Autor oder Typ ..." oninput="loadSources()">
+
+        <label for="filterSourceType">Quellentyp filtern</label>
+        <select id="filterSourceType" onchange="loadSources()">
+            <option value="">Alle Quellentypen</option>
+            <option>Buch</option>
+            <option>Zeitschrift / Magazin</option>
+            <option>Internetseite</option>
+            <option>Artikel / Aufsatz</option>
+            <option>Interview</option>
+            <option>Archivmaterial</option>
+            <option>Sonstige Quelle</option>
+        </select>
+
+        <label for="filterVerification">Pr&uuml;fstatus filtern</label>
+        <select id="filterVerification" onchange="loadSources()">
+            <option value="">Alle Pr&uuml;fstatus</option>
+            <option>Ungepr&uuml;ft</option>
+            <option>Gepr&uuml;ft</option>
+            <option>Pr&uuml;fung mit Einschr&auml;nkungen</option>
+        </select>
+
+        <label for="filterReliability">Zuverl&auml;ssigkeit filtern</label>
+        <select id="filterReliability" onchange="loadSources()">
+            <option value="">Alle Zuverl&auml;ssigkeitsstufen</option>
+            <option>Nicht einsch&auml;tzbar</option>
+            <option>Hoch</option>
+            <option>Mittel</option>
+            <option>Niedrig</option>
+        </select>
+
+        <div class="actions">
+            <button onclick="resetSourceFilters()">Filter zur&uuml;cksetzen</button>
+        </div>
+
+        <div id="sourceList"></div>
+        <div class="actions">
+            <button class="primary" onclick="newSource()">+ Neue Quelle</button>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2 id="formTitle">Neue Quelle anlegen</h2>
+
+        <form id="sourceForm" onsubmit="saveSource(event)">
+            <div class="form-grid">
+                <div class="full">
+                    <label for="title">Titel *</label>
+                    <input id="title" required>
+                </div>
+
+                <div>
+                    <label for="source_type">Quellentyp</label>
+                    <select id="source_type">
+                        <option value="">Bitte auswählen</option>
+                        <option>Buch</option>
+                        <option>Zeitschrift / Magazin</option>
+                        <option>Internetseite</option>
+                        <option>Artikel / Aufsatz</option>
+                        <option>Interview</option>
+                        <option>Archivmaterial</option>
+                        <option>Sonstige Quelle</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="author">Autor / Herausgeber</label>
+                    <input id="author">
+                </div>
+
+                <div>
+                    <label for="publication_date">Veröffentlichungsdatum</label>
+                    <input id="publication_date" placeholder="z. B. 1985 oder 12.05.2020">
+                </div>
+
+                <div>
+                    <label for="verification_status">Interner Prüfstatus</label>
+                    <select id="verification_status">
+                        <option>Ungeprüft</option>
+                        <option>Geprüft</option>
+                        <option>Prüfung mit Einschränkungen</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="reliability">Interne Zuverlässigkeit</label>
+                    <select id="reliability">
+                        <option>Nicht einschätzbar</option>
+                        <option>Hoch</option>
+                        <option>Mittel</option>
+                        <option>Niedrig</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="url">URL</label>
+                    <input id="url" type="url" placeholder="https://...">
+                    <div id="externalSourceLink" hidden style="margin-top:8px;"></div>
+                </div>
+
+                <div class="full">
+                    <label for="notes">Anmerkungen</label>
+                    <textarea id="notes"></textarea>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="primary">Speichern</button>
+                <button type="button" onclick="newSource()">Zurücksetzen</button>
+                <button type="button" class="danger" onclick="deleteSource()">Quelle löschen</button>
+            </div>
+        </form>
+
+        <div id="message" class="message"></div>
+
+        <div id="assignmentArea" hidden>
+            <hr style="border-color:#333; margin:25px 0">
+            <h2>Zuordnung zu Hörspielfällen</h2>
+
+            <label for="episodeSelect">Hörspielfall auswählen</label>
+            <select id="episodeSelect">
+                <option value="">Bitte auswählen</option>
+            </select>
+
+            <label for="assignmentNotes">Anmerkung zur Zuordnung</label>
+            <textarea id="assignmentNotes" placeholder="z. B. Quelle belegt eine Information zu diesem Hörspielfall"></textarea>
+
+            <button class="primary" onclick="assignEpisode()">Hörspielfall zuordnen</button>
+
+            <h3>Verknüpfte Hörspielfälle</h3>
+            <div id="assignmentList"></div>
+        </div>
+    </section>
+
+</div>
+
+<script>
+let selectedSourceId = null;
+
+const $ = id => document.getElementById(id);
+
+function showMessage(message) {
+    $("message").textContent = message;
+}
+
+async function api(url, options = {}) {
+    const response = await fetch(url, {
+        headers: { "Content-Type": "application/json" },
+        ...options
+    });
+
+    let data = {};
+    try {
+        data = await response.json();
+    } catch (_) {}
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Ein Fehler ist aufgetreten.");
+    }
+
+    return data;
+}
+
+async function loadSources() {
+    try {
+        const params = new URLSearchParams({
+            search: $("search").value,
+            source_type: $("filterSourceType").value,
+            verification_status: $("filterVerification").value,
+            reliability: $("filterReliability").value
+        });
+
+        const sources = await api("/api/sources?" + params.toString());
+
+        $("sourceList").innerHTML = "";
+
+        if (!sources.length) {
+            $("sourceList").textContent = "Keine Quellen gefunden.";
+            return;
+        }
+
+        sources.forEach(source => {
+            const item = document.createElement("div");
+            item.className = "source-item" +
+                (source.id === selectedSourceId ? " active" : "");
+
+            const title = document.createElement("strong");
+            title.textContent = source.title;
+
+            const details = document.createElement("div");
+            details.className = "muted";
+            details.textContent =
+                [source.source_type, source.author].filter(Boolean).join(" ? ");
+
+            item.append(title, details);
+            item.onclick = () => selectSource(source.id);
+            $("sourceList").appendChild(item);
+        });
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+function resetSourceFilters() {
+    $("search").value = "";
+    $("filterSourceType").value = "";
+    $("filterVerification").value = "";
+    $("filterReliability").value = "";
+    loadSources();
+}
+
+function updateExternalSourceLink() {
+    const container = $("externalSourceLink");
+    const rawUrl = $("url").value.trim();
+
+    container.replaceChildren();
+    container.hidden = true;
+
+    if (!rawUrl) return;
+
+    try {
+        const parsedUrl = new URL(rawUrl);
+
+        if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+            return;
+        }
+
+        const link = document.createElement("a");
+        link.href = parsedUrl.href;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.style.color = "#ffffff";
+        link.textContent = "Externe Quelle ?ffnen";
+
+        container.appendChild(link);
+        container.hidden = false;
+    } catch {
+        return;
+    }
+}
+
+function newSource() {
+    selectedSourceId = null;
+    $("sourceForm").reset();
+    $("formTitle").textContent = "Neue Quelle anlegen";
+    $("assignmentArea").hidden = true;
+    updateExternalSourceLink();
+    showMessage("");
+    loadSources();
+}
+
+async function selectSource(id) {
+    try {
+        const source = await api("/api/sources/" + id);
+        selectedSourceId = id;
+
+        $("title").value = source.title || "";
+        $("source_type").value = source.source_type || "";
+        $("author").value = source.author || "";
+        $("publication_date").value = source.publication_date || "";
+        $("verification_status").value = source.verification_status || "Ungeprüft";
+        $("reliability").value = source.reliability || "Nicht einschätzbar";
+        $("url").value = source.url || "";
+        updateExternalSourceLink();
+        $("notes").value = source.notes || "";
+
+        $("formTitle").textContent = "Quelle bearbeiten";
+        $("assignmentArea").hidden = false;
+
+        await loadEpisodes();
+        await loadAssignments();
+        await loadSources();
+        showMessage("Quelle geladen.");
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+async function saveSource(event) {
+    event.preventDefault();
+
+    const source = {
+        title: $("title").value.trim(),
+        source_type: $("source_type").value || null,
+        author: $("author").value.trim() || null,
+        publication_date: $("publication_date").value.trim() || null,
+        verification_status: $("verification_status").value,
+        reliability: $("reliability").value,
+        url: $("url").value.trim() || null,
+        notes: $("notes").value.trim() || null
+    };
+
+    try {
+        if (selectedSourceId === null) {
+            const result = await api("/api/sources", {
+                method: "POST",
+                body: JSON.stringify(source)
+            });
+            selectedSourceId = result.id;
+        } else {
+            await api("/api/sources/" + selectedSourceId, {
+                method: "PUT",
+                body: JSON.stringify(source)
+            });
+        }
+
+        $("formTitle").textContent = "Quelle bearbeiten";
+        $("assignmentArea").hidden = false;
+        await loadEpisodes();
+        await loadAssignments();
+        await loadSources();
+        showMessage("Quelle erfolgreich gespeichert.");
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+async function deleteSource() {
+    if (selectedSourceId === null) {
+        showMessage("Bitte zuerst eine Quelle auswählen.");
+        return;
+    }
+
+    if (!confirm("Soll diese Quelle wirklich gelöscht werden?")) return;
+
+    try {
+        await api("/api/sources/" + selectedSourceId, {
+            method: "DELETE"
+        });
+        newSource();
+        showMessage("Quelle gelöscht.");
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+async function loadEpisodes() {
+    const episodes = await api("/api/episodes");
+    const select = $("episodeSelect");
+    select.innerHTML = '<option value="">Bitte auswählen</option>';
+
+    episodes.forEach(episode => {
+        const option = document.createElement("option");
+        option.value = episode.id;
+        option.textContent =
+            "Folge " + episode.episode_number + " – " + episode.title;
+        select.appendChild(option);
+    });
+}
+
+async function loadAssignments() {
+    if (selectedSourceId === null) return;
+
+    const assignments = await api(
+        "/api/sources/" + selectedSourceId + "/episodes"
+    );
+
+    $("assignmentList").innerHTML = "";
+
+    if (!assignments.length) {
+        $("assignmentList").textContent =
+            "Noch keine H?rspielf?lle zugeordnet.";
+        return;
+    }
+
+    assignments.forEach(assignment => {
+        const item = document.createElement("div");
+        item.className = "assignment";
+
+        const title = document.createElement("strong");
+        title.textContent =
+            "Folge " + assignment.episode_number + " ? " + assignment.title;
+
+        const notes = document.createElement("div");
+        notes.className = "muted";
+        notes.textContent = assignment.notes || "Keine Anmerkung vorhanden.";
+
+        const actions = document.createElement("div");
+        actions.className = "assignment-actions";
+
+        const edit = document.createElement("button");
+        edit.textContent = "Notiz bearbeiten";
+        edit.onclick = () => editAssignmentNotes(assignment, item);
+
+        const remove = document.createElement("button");
+        remove.textContent = "Entfernen";
+        remove.className = "danger";
+        remove.onclick = () => removeAssignment(assignment.episode_id);
+
+        actions.append(edit, remove);
+        item.append(title, notes, actions);
+        $("assignmentList").appendChild(item);
+    });
+}
+
+function editAssignmentNotes(assignment, item) {
+    item.innerHTML = "";
+
+    const title = document.createElement("strong");
+    title.textContent =
+        "Folge " + assignment.episode_number + " ? " + assignment.title;
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "assignment-edit-notes";
+    textarea.value = assignment.notes || "";
+    textarea.placeholder = "Anmerkung zu dieser Zuordnung";
+
+    const actions = document.createElement("div");
+    actions.className = "assignment-actions";
+
+    const save = document.createElement("button");
+    save.textContent = "Notiz speichern";
+    save.className = "primary";
+    save.onclick = () => saveAssignmentNotes(assignment, textarea);
+
+    const cancel = document.createElement("button");
+    cancel.textContent = "Abbrechen";
+    cancel.onclick = () => loadAssignments();
+
+    actions.append(save, cancel);
+    item.append(title, textarea, actions);
+    textarea.focus();
+}
+
+async function saveAssignmentNotes(assignment, textarea) {
+    try {
+        await api(
+            "/api/sources/" + selectedSourceId +
+            "/episodes/" + assignment.episode_id,
+            {
+                method: "PUT",
+                body: JSON.stringify({
+                    notes: textarea.value.trim() || null
+                })
+            }
+        );
+
+        await loadAssignments();
+        showMessage("Anmerkung wurde gespeichert.");
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+async function assignEpisode() {
+    if (selectedSourceId === null) return;
+
+    const episodeId = $("episodeSelect").value;
+
+    if (!episodeId) {
+        showMessage("Bitte einen Hörspielfall auswählen.");
+        return;
+    }
+
+    try {
+        await api("/api/sources/" + selectedSourceId + "/episodes", {
+            method: "POST",
+            body: JSON.stringify({
+                episode_id: Number(episodeId),
+                notes: $("assignmentNotes").value.trim() || null
+            })
+        });
+
+        $("assignmentNotes").value = "";
+        await loadAssignments();
+        showMessage("Hörspielfall wurde zugeordnet.");
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+async function removeAssignment(episodeId) {
+    if (!confirm("Diese Zuordnung wirklich entfernen?")) return;
+
+    try {
+        await api(
+            "/api/sources/" + selectedSourceId + "/episodes/" + episodeId,
+            { method: "DELETE" }
+        );
+        await loadAssignments();
+        showMessage("Zuordnung entfernt.");
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+loadSources();
+
+/* Direktaufruf einer Quelle über ?id= */
+async function openSourceFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const sourceId = params.get("id");
+
+    if (!sourceId || !/^\d+$/.test(sourceId)) {
+        return;
+    }
+
+    await selectSource(Number(sourceId));
+}
+
+openSourceFromUrl();
+</script>
+
+</body>
+</html>

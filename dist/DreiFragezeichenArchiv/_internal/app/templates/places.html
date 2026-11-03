@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Die drei ??? – Schauplatzverwaltung</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: #080808;
+    color: #eee;
+    font-family: Consolas, "Courier New", monospace;
+}
+
+header {
+    min-height: 170px;
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    align-items: center;
+    text-align: center;
+    border: 2px solid white;
+    background: #050505;
+}
+
+.header-image {
+    width: 100%;
+    height: 165px;
+    object-fit: cover;
+}
+
+.header-title h1 {
+    margin: 0;
+    font-size: clamp(24px, 4vw, 42px);
+    letter-spacing: 3px;
+}
+
+.subtitle {
+    color: #e53935;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    margin-top: 8px;
+}
+
+.question-marks span:nth-child(1) { color: white; }
+.question-marks span:nth-child(2) { color: #e53935; }
+.question-marks span:nth-child(3) { color: #2196f3; }
+
+nav {
+    padding: 15px 30px;
+    border: 2px solid white;
+    border-top: none;
+}
+
+nav a {
+    color: #2196f3;
+    text-decoration: none;
+    margin-right: 25px;
+}
+
+nav a:hover { color: white; }
+
+main {
+    max-width: 1300px;
+    margin: 30px auto;
+    padding: 0 25px;
+}
+
+.page-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+    border-bottom: 2px solid white;
+    padding-bottom: 15px;
+}
+
+h2 {
+    color: #e53935;
+    font-size: 25px;
+}
+
+.button {
+    background: #a51e1e;
+    border: 1px solid #e53935;
+    color: white;
+    padding: 11px 16px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.button:hover { background: #d22a2a; }
+
+.button.secondary {
+    background: #222;
+    border-color: #777;
+}
+
+.button.danger {
+    background: #551010;
+    border-color: #e53935;
+}
+
+.button.small {
+    padding: 7px 10px;
+    font-size: 12px;
+}
+
+.panel {
+    background: #101010;
+    border: 1px solid #666;
+    padding: 22px;
+    margin-top: 25px;
+}
+
+.panel h3 {
+    color: #e53935;
+    margin-top: 0;
+}
+
+.toolbar {
+    display: flex;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: 11px;
+    background: #151515;
+    color: white;
+    border: 1px solid #666;
+    font-family: inherit;
+}
+
+select option {
+    background: #151515;
+    color: white;
+}
+
+input:focus, textarea:focus, select:focus {
+    outline: 1px solid #2196f3;
+    border-color: #2196f3;
+}
+
+.field label {
+    display: block;
+    margin-bottom: 7px;
+    color: #ccc;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.field.full { grid-column: 1 / -1; }
+
+textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    text-align: left;
+    padding: 12px 9px;
+    border-bottom: 1px solid #444;
+}
+
+th {
+    color: #e53935;
+    border-bottom: 1px solid #888;
+}
+
+tr:hover td { background: #191919; }
+
+.place-name { color: #2196f3; }
+
+.status {
+    color: #ccc;
+    line-height: 1.6;
+}
+
+.hidden { display: none !important; }
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 12px;
+    line-height: 1.6;
+}
+
+.detail-label {
+    color: #2196f3;
+    font-weight: bold;
+}
+
+.detail-value {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 25px;
+    flex-wrap: wrap;
+}
+
+.empty {
+    color: #aaa;
+    padding: 20px 0;
+}
+
+.hint {
+    color: #999;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 7px;
+}
+
+.section-divider {
+    border: 0;
+    border-top: 1px solid #555;
+    margin: 30px 0;
+}
+
+.assignment-form {
+    background: #151515;
+    border: 1px solid #444;
+    padding: 18px;
+    margin-top: 18px;
+}
+
+.assignment-form h4 {
+    color: #2196f3;
+    margin-top: 0;
+}
+
+.assignment-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.table-actions {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+footer {
+    border-top: 1px solid white;
+    padding: 20px;
+    text-align: center;
+    color: #aaa;
+}
+
+@media (max-width: 750px) {
+    header { min-height: 120px; }
+    .header-image { height: 115px; }
+    .subtitle { font-size: 14px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .field.full { grid-column: auto; }
+    .detail-grid { grid-template-columns: 1fr; gap: 3px; }
+    table { font-size: 12px; }
+    th, td { padding: 8px 5px; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <img class="header-image"
+         src="/static/images/leuchtturm_archiv_header.png"
+         alt="Leuchtturm">
+
+    <div class="header-title">
+        <h1>DIE DREI
+            <span class="question-marks">
+                <span>?</span><span>?</span><span>?</span>
+            </span>
+        </h1>
+        <div class="subtitle">ARCHIVVERWALTUNG</div>
+    </div>
+
+    <img class="header-image"
+         src="/static/images/haus_archiv_header.png"
+         alt="Haus">
+</header>
+
+<nav>
+    <a href="/">← Startseite</a>
+    <a href="/episodes">Hörspielfolgen</a>
+    <a href="/persons">Personen und Figuren</a>
+    <a href="/speakers">Sprecher</a>
+</nav>
+
+<main>
+
+    <div class="page-heading">
+        <h2>SCHAUPLATZVERWALTUNG</h2>
+
+        <button class="button" onclick="newPlace()">
+            + Neuer Schauplatz
+        </button>
+    </div>
+
+    <!-- Schauplatzformular -->
+    <section id="place-form-panel" class="panel hidden">
+        <h3 id="form-heading">Neuen Schauplatz erfassen</h3>
+
+        <form id="place-form">
+            <div class="form-grid">
+
+                <div class="field full">
+                    <label for="name">Name des Schauplatzes *</label>
+                    <input id="name"
+                           type="text"
+                           maxlength="250"
+                           required>
+                </div>
+
+                <div class="field full">
+                    <label for="description">Beschreibung</label>
+                    <textarea id="description"
+                        placeholder="Informationen zum Ort, Besonderheiten, Hintergrund ..."></textarea>
+                </div>
+
+            </div>
+
+            <div class="form-actions">
+                <button class="button" type="submit">Speichern</button>
+                <button class="button secondary"
+                        type="button"
+                        onclick="hideForm()">
+                    Abbrechen
+                </button>
+            </div>
+
+            <p id="form-status" class="status"></p>
+        </form>
+    </section>
+
+    <!-- Detailansicht -->
+    <section id="detail-panel" class="panel hidden">
+        <h3>DETAILS DES SCHAUPLATZES</h3>
+
+        <div class="detail-grid">
+            <div class="detail-label">Name:</div>
+            <div class="detail-value" id="detail-name"></div>
+
+            <div class="detail-label">Beschreibung:</div>
+            <div class="detail-value" id="detail-description"></div>
+        </div>
+
+        <div class="detail-actions">
+            <button class="button" onclick="editPlace()">Bearbeiten</button>
+            <button class="button danger" onclick="deletePlace()">Löschen</button>
+            <button class="button secondary" onclick="closeDetails()">
+                Zurück zur Übersicht
+            </button>
+        </div>
+
+        <hr class="section-divider">
+
+        <h3>ZUGEORDNETE HÖRSPIELFOLGEN</h3>
+
+        <p class="hint">
+            Hier kannst du festhalten, in welchen Hörspielfolgen dieser
+            Schauplatz vorkommt.
+        </p>
+
+        <div class="assignment-form">
+            <h4>Neue Folge zuordnen</h4>
+
+            <form id="assignment-form">
+                <div class="form-grid">
+
+                    <div class="field full">
+                        <label for="episode-select">Hörspielfolge *</label>
+                        <select id="episode-select" required>
+                            <option value="">Folge auswählen ...</option>
+                        </select>
+                    </div>
+
+                    <div class="field full">
+                        <label for="assignment-notes">Notizen zur Zuordnung</label>
+                        <textarea id="assignment-notes"
+                            placeholder="Zum Beispiel: Ort des Verbrechens, Treffpunkt, wichtiger Handlungsort ..."></textarea>
+                    </div>
+
+                </div>
+
+                <div class="assignment-actions">
+                    <button class="button" type="submit">
+                        Folge zuordnen
+                    </button>
+                </div>
+
+                <p id="assignment-status" class="status"></p>
+            </form>
+        </div>
+
+        <h3 style="margin-top:30px;">VORKOMMEN IN HÖRSPIELFOLGEN</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Folge</th>
+                    <th>Notizen</th>
+                    <th>Aktion</th>
+                </tr>
+            </thead>
+
+            <tbody id="assignment-list">
+                <tr>
+                    <td colspan="3">Zuordnungen werden geladen ...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p id="assignment-list-status" class="status"></p>
+    </section>
+
+    <!-- Schauplatzübersicht -->
+    <section class="panel">
+        <h3>ERFASSTE SCHAUPLÄTZE</h3>
+
+        <div class="toolbar">
+            <input id="search"
+                   type="search"
+                   placeholder="Schauplatz suchen ..."
+                   oninput="loadPlaces()">
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Beschreibung</th>
+                    <th>Aktion</th>
+                </tr>
+            </thead>
+
+            <tbody id="place-list">
+                <tr>
+                    <td colspan="3">Daten werden geladen ...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p id="list-status" class="status"></p>
+    </section>
+
+</main>
+
+<footer>
+    DIE DREI ??? – INTERNES ARCHIVSYSTEM
+</footer>
+
+<script>
+let currentPlaceId = null;
+let currentPlace = null;
+
+function show(elementId) {
+    document.getElementById(elementId).classList.remove("hidden");
+}
+
+function hide(elementId) {
+    document.getElementById(elementId).classList.add("hidden");
+}
+
+function setText(elementId, value) {
+    document.getElementById(elementId).textContent = value || "–";
+}
+
+/* Neuen Schauplatz vorbereiten */
+
+function newPlace() {
+    currentPlaceId = null;
+    currentPlace = null;
+
+    document.getElementById("place-form").reset();
+    document.getElementById("form-heading").textContent =
+        "Neuen Schauplatz erfassen";
+    document.getElementById("form-status").textContent = "";
+
+    hide("detail-panel");
+    show("place-form-panel");
+
+    document.getElementById("name").focus();
+}
+
+function hideForm() {
+    hide("place-form-panel");
+}
+
+/* Schauplätze laden */
+
+async function loadPlaces() {
+    const search = document.getElementById("search").value;
+    const list = document.getElementById("place-list");
+    const status = document.getElementById("list-status");
+
+    status.textContent = "";
+
+    try {
+        const response = await fetch(
+            "/api/places?search=" + encodeURIComponent(search)
+        );
+
+        if (!response.ok) {
+            throw new Error("Fehler beim Laden der Schauplätze.");
+        }
+
+        const places = await response.json();
+        list.replaceChildren();
+
+        if (places.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 3;
+            cell.textContent = "Keine Schauplätze gefunden.";
+
+            row.appendChild(cell);
+            list.appendChild(row);
+            return;
+        }
+
+        places.forEach(place => {
+            const row = document.createElement("tr");
+
+            const name = document.createElement("td");
+            name.textContent = place.name;
+            name.className = "place-name";
+
+            const description = document.createElement("td");
+            description.textContent = place.description || "–";
+
+            const action = document.createElement("td");
+            const button = document.createElement("button");
+
+            button.className = "button small";
+            button.textContent = "Details";
+            button.addEventListener("click", () => showDetails(place.id));
+
+            action.appendChild(button);
+            row.append(name, description, action);
+            list.appendChild(row);
+        });
+
+    } catch (error) {
+        status.textContent = error.message;
+    }
+}
+
+/* Detailansicht laden */
+
+async function showDetails(id) {
+    try {
+        const response = await fetch("/api/places/" + id);
+
+        if (!response.ok) {
+            throw new Error("Schauplatz konnte nicht geladen werden.");
+        }
+
+        currentPlace = await response.json();
+        currentPlaceId = id;
+
+        setText("detail-name", currentPlace.name);
+        setText("detail-description", currentPlace.description);
+
+        hide("place-form-panel");
+        show("detail-panel");
+
+        await loadEpisodes();
+        await loadAssignments();
+
+        document.getElementById("detail-panel")
+            .scrollIntoView({ behavior: "smooth" });
+
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+/* Schauplatz bearbeiten */
+
+function editPlace() {
+    if (!currentPlace) return;
+
+    document.getElementById("name").value = currentPlace.name;
+    document.getElementById("description").value =
+        currentPlace.description || "";
+
+    document.getElementById("form-heading").textContent =
+        "Schauplatz bearbeiten";
+
+    document.getElementById("form-status").textContent = "";
+
+    hide("detail-panel");
+    show("place-form-panel");
+
+    document.getElementById("place-form-panel")
+        .scrollIntoView({ behavior: "smooth" });
+}
+
+/* Schauplatz löschen */
+
+async function deletePlace() {
+    if (!currentPlaceId || !currentPlace) return;
+
+    const confirmed = confirm(
+        'Möchtest du den Schauplatz "' + currentPlace.name +
+        '" wirklich dauerhaft löschen?'
+    );
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(
+            "/api/places/" + currentPlaceId,
+            { method: "DELETE" }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.detail || "Löschen fehlgeschlagen.");
+        }
+
+        currentPlaceId = null;
+        currentPlace = null;
+
+        hide("detail-panel");
+        await loadPlaces();
+
+        alert("Schauplatz wurde gelöscht.");
+
+    } catch (error) {
+        alert("Fehler: " + error.message);
+    }
+}
+
+function closeDetails() {
+    hide("detail-panel");
+    currentPlaceId = null;
+    currentPlace = null;
+}
+
+/* Hörspielfolgen laden */
+
+async function loadEpisodes() {
+    const select = document.getElementById("episode-select");
+
+    select.replaceChildren();
+
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "Folge auswählen ...";
+    select.appendChild(defaultOption);
+
+    try {
+        const response = await fetch("/api/episodes");
+
+        if (!response.ok) {
+            throw new Error("Hörspielfolgen konnten nicht geladen werden.");
+        }
+
+        const episodes = await response.json();
+
+        episodes.sort((a, b) => a.episode_number - b.episode_number);
+
+        episodes.forEach(episode => {
+            const option = document.createElement("option");
+            option.value = episode.id;
+            option.textContent =
+                "Folge " + episode.episode_number + " – " + episode.title;
+
+            select.appendChild(option);
+        });
+
+    } catch (error) {
+        document.getElementById("assignment-status").textContent =
+            error.message;
+    }
+}
+
+/* Bestehende Zuordnungen laden */
+
+async function loadAssignments() {
+    if (!currentPlaceId) return;
+
+    const list = document.getElementById("assignment-list");
+    const status = document.getElementById("assignment-list-status");
+
+    list.replaceChildren();
+    status.textContent = "";
+
+    try {
+        const response = await fetch(
+            "/api/places/" + currentPlaceId + "/episodes"
+        );
+
+        if (!response.ok) {
+            throw new Error("Zuordnungen konnten nicht geladen werden.");
+        }
+
+        const assignments = await response.json();
+
+        if (assignments.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 3;
+            cell.textContent =
+                "Dieser Schauplatz ist noch keiner Folge zugeordnet.";
+
+            row.appendChild(cell);
+            list.appendChild(row);
+            return;
+        }
+
+        assignments.forEach(assignment => {
+            const row = document.createElement("tr");
+
+            const episode = document.createElement("td");
+            episode.textContent =
+                "Folge " + assignment.episode_number +
+                " – " + assignment.title;
+
+            const notes = document.createElement("td");
+            notes.textContent = assignment.notes || "–";
+
+            const action = document.createElement("td");
+            const button = document.createElement("button");
+
+            button.className = "button danger small";
+            button.textContent = "Entfernen";
+
+            button.addEventListener("click", () => {
+                deleteAssignment(assignment);
+            });
+
+            action.appendChild(button);
+            row.append(episode, notes, action);
+            list.appendChild(row);
+        });
+
+    } catch (error) {
+        status.textContent = error.message;
+    }
+}
+
+/* Neue Zuordnung speichern */
+
+document.getElementById("assignment-form")
+    .addEventListener("submit", async function(event) {
+
+        event.preventDefault();
+
+        if (!currentPlaceId) return;
+
+        const episodeId =
+            Number(document.getElementById("episode-select").value);
+
+        if (!episodeId) {
+            document.getElementById("assignment-status").textContent =
+                "Bitte wähle eine Hörspielfolge aus.";
+            return;
+        }
+
+        const data = {
+            episode_id: episodeId,
+            notes: document.getElementById("assignment-notes").value.trim()
+        };
+
+        const status = document.getElementById("assignment-status");
+        status.textContent = "";
+
+        try {
+            const response = await fetch(
+                "/api/places/" + currentPlaceId + "/episodes",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(data)
+                }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    result.detail || "Zuordnung fehlgeschlagen."
+                );
+            }
+
+            document.getElementById("assignment-form").reset();
+
+            await loadAssignments();
+
+            status.textContent = "Folge erfolgreich zugeordnet.";
+
+        } catch (error) {
+            status.textContent = "Fehler: " + error.message;
+        }
+    });
+
+/* Zuordnung entfernen */
+
+async function deleteAssignment(assignment) {
+    if (!currentPlaceId) return;
+
+    const confirmed = confirm(
+        "Soll die Zuordnung zu Folge " +
+        assignment.episode_number +
+        " wirklich entfernt werden?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(
+            "/api/places/" + currentPlaceId +
+            "/episodes/" + assignment.episode_id,
+            { method: "DELETE" }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                result.detail || "Entfernen fehlgeschlagen."
+            );
+        }
+
+        await loadAssignments();
+
+    } catch (error) {
+        alert("Fehler: " + error.message);
+    }
+}
+
+/* Schauplatz speichern */
+
+document.getElementById("place-form")
+    .addEventListener("submit", async function(event) {
+
+        event.preventDefault();
+
+        const data = {
+            name: document.getElementById("name").value.trim(),
+            description: document.getElementById("description").value
+        };
+
+        const status = document.getElementById("form-status");
+        const isEditing = currentPlaceId !== null;
+
+        const url = isEditing
+            ? "/api/places/" + currentPlaceId
+            : "/api/places";
+
+        const method = isEditing ? "PUT" : "POST";
+
+        status.textContent = "";
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    result.detail || "Speichern fehlgeschlagen."
+                );
+            }
+
+            status.textContent = isEditing
+                ? "Schauplatz erfolgreich aktualisiert."
+                : "Schauplatz erfolgreich angelegt.";
+
+            currentPlaceId = null;
+            currentPlace = null;
+
+            document.getElementById("place-form").reset();
+
+            await loadPlaces();
+
+            setTimeout(() => {
+                hide("place-form-panel");
+                status.textContent = "";
+            }, 1200);
+
+        } catch (error) {
+            status.textContent = "Fehler: " + error.message;
+        }
+    });
+
+loadPlaces();
+
+/* Direktaufruf eines Schauplatzes über ?id= */
+async function openPlaceFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const placeId = params.get("id");
+
+    if (!placeId || !/^\d+$/.test(placeId)) {
+        return;
+    }
+
+    await showDetails(Number(placeId));
+}
+
+openPlaceFromUrl();
+</script>
+
+</body>
+</html>

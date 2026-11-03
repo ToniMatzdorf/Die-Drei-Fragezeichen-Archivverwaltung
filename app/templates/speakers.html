@@ -1,0 +1,1149 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Die drei ??? – Sprecherverwaltung</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: #080808;
+    color: #eee;
+    font-family: Consolas, "Courier New", monospace;
+}
+
+header {
+    min-height: 170px;
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    align-items: center;
+    text-align: center;
+    border: 2px solid white;
+    background: #050505;
+}
+
+.header-image {
+    width: 100%;
+    height: 165px;
+    object-fit: cover;
+}
+
+.header-title h1 {
+    margin: 0;
+    font-size: clamp(24px, 4vw, 42px);
+    letter-spacing: 3px;
+}
+
+.subtitle {
+    color: #e53935;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    margin-top: 8px;
+}
+
+.question-marks span:nth-child(1) { color: white; }
+.question-marks span:nth-child(2) { color: #e53935; }
+.question-marks span:nth-child(3) { color: #2196f3; }
+
+nav {
+    padding: 15px 30px;
+    border: 2px solid white;
+    border-top: none;
+}
+
+nav a {
+    color: #2196f3;
+    text-decoration: none;
+    margin-right: 25px;
+}
+
+nav a:hover { color: white; }
+
+main {
+    max-width: 1300px;
+    margin: 30px auto;
+    padding: 0 25px;
+}
+
+.page-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+    border-bottom: 2px solid white;
+    padding-bottom: 15px;
+}
+
+h2 {
+    color: #e53935;
+    font-size: 25px;
+}
+
+.button {
+    background: #a51e1e;
+    border: 1px solid #e53935;
+    color: white;
+    padding: 11px 16px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.button:hover { background: #d22a2a; }
+
+.button.secondary {
+    background: #222;
+    border-color: #777;
+}
+
+.button.danger {
+    background: #551010;
+    border-color: #e53935;
+}
+
+.button.small {
+    padding: 7px 10px;
+    font-size: 12px;
+}
+
+.panel {
+    background: #101010;
+    border: 1px solid #666;
+    padding: 22px;
+    margin-top: 25px;
+}
+
+.panel h3 {
+    color: #e53935;
+    margin-top: 0;
+}
+
+.toolbar {
+    display: flex;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: 11px;
+    background: #151515;
+    color: white;
+    border: 1px solid #666;
+    font-family: inherit;
+}
+
+select option {
+    background: #151515;
+    color: white;
+}
+
+input:focus, textarea:focus, select:focus {
+    outline: 1px solid #2196f3;
+    border-color: #2196f3;
+}
+
+.field label {
+    display: block;
+    margin-bottom: 7px;
+    color: #ccc;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.field.full { grid-column: 1 / -1; }
+
+textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    text-align: left;
+    padding: 12px 9px;
+    border-bottom: 1px solid #444;
+    vertical-align: top;
+}
+
+th {
+    color: #e53935;
+    border-bottom: 1px solid #888;
+}
+
+tr:hover td { background: #191919; }
+
+.speaker-name { color: #2196f3; }
+
+.status {
+    color: #ccc;
+    line-height: 1.6;
+}
+
+.hidden { display: none !important; }
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 12px;
+    line-height: 1.6;
+}
+
+.detail-label {
+    color: #2196f3;
+    font-weight: bold;
+}
+
+.detail-value {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 25px;
+    flex-wrap: wrap;
+}
+
+.empty {
+    color: #aaa;
+    padding: 20px 0;
+}
+
+.hint {
+    color: #999;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 7px;
+}
+
+.section-divider {
+    border: 0;
+    border-top: 1px solid #555;
+    margin: 30px 0;
+}
+
+.assignment-form {
+    background: #171717;
+    border: 1px solid #555;
+    padding: 18px;
+    margin-top: 20px;
+}
+
+.assignment-form h4 {
+    color: #2196f3;
+    margin-top: 0;
+}
+
+.assignment-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.assignment-table {
+    overflow-x: auto;
+}
+
+footer {
+    border-top: 1px solid white;
+    padding: 20px;
+    text-align: center;
+    color: #aaa;
+}
+
+@media (max-width: 750px) {
+    header { min-height: 120px; }
+    .header-image { height: 115px; }
+    .subtitle { font-size: 14px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .field.full { grid-column: auto; }
+    .detail-grid { grid-template-columns: 1fr; gap: 3px; }
+    table { font-size: 12px; }
+    th, td { padding: 8px 5px; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <img class="header-image"
+         src="/static/images/leuchtturm_archiv_header.png"
+         alt="Leuchtturm">
+
+    <div class="header-title">
+        <h1>DIE DREI
+            <span class="question-marks">
+                <span>?</span><span>?</span><span>?</span>
+            </span>
+        </h1>
+        <div class="subtitle">ARCHIVVERWALTUNG</div>
+    </div>
+
+    <img class="header-image"
+         src="/static/images/haus_archiv_header.png"
+         alt="Haus">
+</header>
+
+<nav>
+    <a href="/">← Startseite</a>
+    <a href="/episodes">Hörspielfolgen</a>
+    <a href="/persons">Personen und Figuren</a>
+    <a href="/speakers">Sprecher</a>
+</nav>
+
+<main>
+
+    <div class="page-heading">
+        <h2>SPRECHERVERWALTUNG</h2>
+
+        <button class="button" onclick="newSpeaker()">
+            + Neuer Sprecher
+        </button>
+    </div>
+
+    <!-- Sprecherformular -->
+
+    <section id="speaker-form-panel" class="panel hidden">
+        <h3 id="form-heading">Neuen Sprecher erfassen</h3>
+
+        <form id="speaker-form">
+            <div class="form-grid">
+
+                <div class="field full">
+                    <label for="name">Name des Sprechers *</label>
+                    <input id="name" type="text" maxlength="250" required>
+                </div>
+
+                <div class="field">
+                    <label for="birth-date">Geburtsdatum</label>
+                    <input id="birth-date" type="date">
+                </div>
+
+                <div class="field">
+                    <label for="death-date">Sterbedatum</label>
+                    <input id="death-date" type="date">
+                </div>
+
+                <div class="field full">
+                    <label for="aliases">Alternative Namen und Pseudonyme</label>
+                    <textarea id="aliases"
+                        placeholder="Künstlernamen, Pseudonyme, andere Schreibweisen ..."></textarea>
+                    <div class="hint">
+                        Mehrere Namen bitte jeweils in eine eigene Zeile schreiben.
+                    </div>
+                </div>
+
+                <div class="field full">
+                    <label for="biography">Biografie</label>
+                    <textarea id="biography"
+                        placeholder="Biografische Informationen zum Sprecher ..."></textarea>
+                </div>
+
+                <div class="field full">
+                    <label for="notes">Interne Notizen</label>
+                    <textarea id="notes"
+                        placeholder="Quellenhinweise, Besonderheiten, Recherchevermerke ..."></textarea>
+                </div>
+
+            </div>
+
+            <div class="form-actions">
+                <button class="button" type="submit">Speichern</button>
+                <button class="button secondary"
+                        type="button"
+                        onclick="hideForm()">
+                    Abbrechen
+                </button>
+            </div>
+
+            <p id="form-status" class="status"></p>
+        </form>
+    </section>
+
+    <!-- Detailansicht -->
+
+    <section id="detail-panel" class="panel hidden">
+        <h3>DETAILS DES SPRECHERS</h3>
+
+        <div class="detail-grid">
+            <div class="detail-label">Name:</div>
+            <div class="detail-value" id="detail-name"></div>
+
+            <div class="detail-label">Geburtsdatum:</div>
+            <div class="detail-value" id="detail-birth-date"></div>
+
+            <div class="detail-label">Sterbedatum:</div>
+            <div class="detail-value" id="detail-death-date"></div>
+
+            <div class="detail-label">Alternative Namen:</div>
+            <div class="detail-value" id="detail-aliases"></div>
+
+            <div class="detail-label">Biografie:</div>
+            <div class="detail-value" id="detail-biography"></div>
+
+            <div class="detail-label">Interne Notizen:</div>
+            <div class="detail-value" id="detail-notes"></div>
+        </div>
+
+        <div class="detail-actions">
+            <button class="button" onclick="editSpeaker()">Bearbeiten</button>
+            <button class="button danger" onclick="deleteSpeaker()">Löschen</button>
+            <button class="button secondary" onclick="closeDetails()">
+                Zurück zur Übersicht
+            </button>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- Sprecher-Figuren-Zuordnung -->
+
+        <h3>GESPROCHENE FIGUREN</h3>
+
+        <p class="hint">
+            Hier kannst du erfassen, welche Figuren dieser Sprecher
+            in welchen Hörspielfolgen gesprochen hat.
+        </p>
+
+        <div class="assignment-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Figur</th>
+                        <th>Folge</th>
+                        <th>Anmerkungen</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody id="role-list">
+                    <tr>
+                        <td colspan="4">Zuordnungen werden geladen ...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p id="role-list-status" class="status"></p>
+
+        <div class="assignment-form">
+            <h4 id="role-form-heading">Neue Figuren-Zuordnung</h4>
+
+            <form id="role-form">
+                <div class="form-grid">
+
+                    <div class="field">
+                        <label for="role-person">Figur auswählen *</label>
+                        <select id="role-person" required>
+                            <option value="">Figuren werden geladen ...</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="role-episode">Hörspielfolge auswählen *</label>
+                        <select id="role-episode" required>
+                            <option value="">Folgen werden geladen ...</option>
+                        </select>
+                    </div>
+
+                    <div class="field full">
+                        <label for="role-notes">Anmerkungen zur Rollenbesetzung</label>
+                        <textarea id="role-notes"
+                            placeholder="Besonderheiten der Besetzung, abweichende Rollenbezeichnung, Quellenhinweise ..."></textarea>
+                    </div>
+
+                </div>
+
+                <div class="assignment-actions">
+                    <button class="button" type="submit" id="role-submit">
+                        Zuordnung speichern
+                    </button>
+
+                    <button class="button secondary hidden"
+                            type="button"
+                            id="role-cancel"
+                            onclick="cancelRoleEdit()">
+                        Bearbeitung abbrechen
+                    </button>
+                </div>
+
+                <p id="role-form-status" class="status"></p>
+            </form>
+        </div>
+    </section>
+
+    <!-- Sprecherübersicht -->
+
+    <section class="panel">
+        <h3>ERFASSTE SPRECHER</h3>
+
+        <div class="toolbar">
+            <input id="search"
+                   type="search"
+                   placeholder="Name oder alternativen Namen suchen ..."
+                   oninput="loadSpeakers()">
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Lebensdaten</th>
+                    <th>Alternative Namen</th>
+                    <th>Aktion</th>
+                </tr>
+            </thead>
+
+            <tbody id="speaker-list">
+                <tr>
+                    <td colspan="4">Daten werden geladen ...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p id="list-status" class="status"></p>
+    </section>
+
+</main>
+
+<footer>
+    DIE DREI ??? – INTERNES ARCHIVSYSTEM
+</footer>
+
+<script>
+let currentSpeakerId = null;
+let currentSpeaker = null;
+let currentRoleId = null;
+
+let availablePersons = [];
+let availableEpisodes = [];
+
+function show(elementId) {
+    document.getElementById(elementId).classList.remove("hidden");
+}
+
+function hide(elementId) {
+    document.getElementById(elementId).classList.add("hidden");
+}
+
+function setText(elementId, value) {
+    document.getElementById(elementId).textContent = value || "–";
+}
+
+function formatDate(value) {
+    if (!value) return "–";
+
+    const parts = value.split("-");
+
+    if (parts.length !== 3) return value;
+
+    return parts[2] + "." + parts[1] + "." + parts[0];
+}
+
+function newSpeaker() {
+    currentSpeakerId = null;
+    currentSpeaker = null;
+
+    document.getElementById("speaker-form").reset();
+    document.getElementById("form-heading").textContent =
+        "Neuen Sprecher erfassen";
+
+    document.getElementById("form-status").textContent = "";
+
+    hide("detail-panel");
+    show("speaker-form-panel");
+
+    document.getElementById("name").focus();
+}
+
+function hideForm() {
+    hide("speaker-form-panel");
+}
+
+async function loadSpeakers() {
+    const search = document.getElementById("search").value;
+    const list = document.getElementById("speaker-list");
+    const status = document.getElementById("list-status");
+
+    status.textContent = "";
+
+    try {
+        const response = await fetch(
+            "/api/speakers?search=" + encodeURIComponent(search)
+        );
+
+        if (!response.ok) {
+            throw new Error("Fehler beim Laden der Sprecher.");
+        }
+
+        const speakers = await response.json();
+
+        list.replaceChildren();
+
+        if (speakers.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 4;
+            cell.textContent = "Keine Sprecher gefunden.";
+
+            row.appendChild(cell);
+            list.appendChild(row);
+            return;
+        }
+
+        speakers.forEach(speaker => {
+            const row = document.createElement("tr");
+
+            const name = document.createElement("td");
+            name.textContent = speaker.name;
+            name.className = "speaker-name";
+
+            const dates = document.createElement("td");
+
+            if (speaker.birth_date || speaker.death_date) {
+                dates.textContent =
+                    formatDate(speaker.birth_date) +
+                    " – " +
+                    formatDate(speaker.death_date);
+            } else {
+                dates.textContent = "–";
+            }
+
+            const aliases = document.createElement("td");
+            aliases.textContent =
+                speaker.aliases && speaker.aliases.length
+                    ? speaker.aliases.join(", ")
+                    : "–";
+
+            const action = document.createElement("td");
+            const button = document.createElement("button");
+
+            button.className = "button small";
+            button.textContent = "Details";
+            button.addEventListener("click", () => {
+                showDetails(speaker.id);
+            });
+
+            action.appendChild(button);
+            row.append(name, dates, aliases, action);
+            list.appendChild(row);
+        });
+
+    } catch (error) {
+        status.textContent = error.message;
+    }
+}
+
+async function showDetails(id) {
+    try {
+        const response = await fetch("/api/speakers/" + id);
+
+        if (!response.ok) {
+            throw new Error("Sprecher konnte nicht geladen werden.");
+        }
+
+        currentSpeaker = await response.json();
+        currentSpeakerId = id;
+        currentRoleId = null;
+
+        setText("detail-name", currentSpeaker.name);
+        setText("detail-birth-date", formatDate(currentSpeaker.birth_date));
+        setText("detail-death-date", formatDate(currentSpeaker.death_date));
+
+        setText(
+            "detail-aliases",
+            currentSpeaker.aliases && currentSpeaker.aliases.length
+                ? currentSpeaker.aliases.join("\n")
+                : ""
+        );
+
+        setText("detail-biography", currentSpeaker.biography);
+        setText("detail-notes", currentSpeaker.notes);
+
+        hide("speaker-form-panel");
+        show("detail-panel");
+
+        resetRoleForm();
+
+        await loadReferenceData();
+        await loadSpeakerRoles();
+
+        document.getElementById("detail-panel")
+            .scrollIntoView({ behavior: "smooth" });
+
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+function editSpeaker() {
+    if (!currentSpeaker) return;
+
+    document.getElementById("name").value =
+        currentSpeaker.name || "";
+
+    document.getElementById("birth-date").value =
+        currentSpeaker.birth_date || "";
+
+    document.getElementById("death-date").value =
+        currentSpeaker.death_date || "";
+
+    document.getElementById("aliases").value =
+        currentSpeaker.aliases
+            ? currentSpeaker.aliases.join("\n")
+            : "";
+
+    document.getElementById("biography").value =
+        currentSpeaker.biography || "";
+
+    document.getElementById("notes").value =
+        currentSpeaker.notes || "";
+
+    document.getElementById("form-heading").textContent =
+        "Sprecher bearbeiten";
+
+    document.getElementById("form-status").textContent = "";
+
+    hide("detail-panel");
+    show("speaker-form-panel");
+
+    document.getElementById("speaker-form-panel")
+        .scrollIntoView({ behavior: "smooth" });
+}
+
+async function deleteSpeaker() {
+    if (!currentSpeakerId || !currentSpeaker) return;
+
+    const confirmed = confirm(
+        'Möchtest du den Sprecher "' + currentSpeaker.name +
+        '" wirklich dauerhaft löschen?'
+    );
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(
+            "/api/speakers/" + currentSpeakerId,
+            { method: "DELETE" }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.detail || "Löschen fehlgeschlagen.");
+        }
+
+        currentSpeakerId = null;
+        currentSpeaker = null;
+
+        hide("detail-panel");
+        await loadSpeakers();
+
+        alert("Sprecher wurde gelöscht.");
+
+    } catch (error) {
+        alert("Fehler: " + error.message);
+    }
+}
+
+function closeDetails() {
+    hide("detail-panel");
+    currentSpeakerId = null;
+    currentSpeaker = null;
+    currentRoleId = null;
+}
+
+/* ============================================================
+   FIGUREN UND HÖRSPIELFOLGEN LADEN
+   ============================================================ */
+
+async function loadReferenceData() {
+    const personSelect = document.getElementById("role-person");
+    const episodeSelect = document.getElementById("role-episode");
+
+    try {
+        const [personResponse, episodeResponse] = await Promise.all([
+            fetch("/api/persons"),
+            fetch("/api/episodes")
+        ]);
+
+        if (!personResponse.ok || !episodeResponse.ok) {
+            throw new Error("Figuren oder Hörspielfolgen konnten nicht geladen werden.");
+        }
+
+        availablePersons = await personResponse.json();
+        availableEpisodes = await episodeResponse.json();
+
+        personSelect.replaceChildren();
+        episodeSelect.replaceChildren();
+
+        const personPlaceholder = document.createElement("option");
+        personPlaceholder.value = "";
+        personPlaceholder.textContent = "Bitte Figur auswählen";
+        personSelect.appendChild(personPlaceholder);
+
+        availablePersons.forEach(person => {
+            const option = document.createElement("option");
+            option.value = person.id;
+            option.textContent = person.name;
+            personSelect.appendChild(option);
+        });
+
+        const episodePlaceholder = document.createElement("option");
+        episodePlaceholder.value = "";
+        episodePlaceholder.textContent = "Bitte Folge auswählen";
+        episodeSelect.appendChild(episodePlaceholder);
+
+        availableEpisodes.forEach(episode => {
+            const option = document.createElement("option");
+            option.value = episode.id;
+            option.textContent =
+                "Folge " + episode.episode_number + " – " + episode.title;
+            episodeSelect.appendChild(option);
+        });
+
+    } catch (error) {
+        document.getElementById("role-form-status").textContent =
+            "Fehler beim Laden der Auswahlfelder: " + error.message;
+    }
+}
+
+/* ============================================================
+   SPRECHERZUORDNUNGEN ANZEIGEN
+   ============================================================ */
+
+async function loadSpeakerRoles() {
+    if (!currentSpeakerId) return;
+
+    const list = document.getElementById("role-list");
+    const status = document.getElementById("role-list-status");
+
+    status.textContent = "";
+
+    try {
+        const response = await fetch(
+            "/api/speakers/" + currentSpeakerId + "/roles"
+        );
+
+        if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.detail || "Zuordnungen konnten nicht geladen werden.");
+        }
+
+        const roles = await response.json();
+
+        list.replaceChildren();
+
+        if (roles.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 4;
+            cell.className = "empty";
+            cell.textContent =
+                "Für diesen Sprecher wurden noch keine Figuren erfasst.";
+
+            row.appendChild(cell);
+            list.appendChild(row);
+            return;
+        }
+
+        roles.forEach(role => {
+            const row = document.createElement("tr");
+
+            const personCell = document.createElement("td");
+            personCell.textContent = role.person_name;
+            personCell.className = "speaker-name";
+
+            const episodeCell = document.createElement("td");
+            episodeCell.textContent =
+                "Folge " + role.episode_number + " – " + role.episode_title;
+
+            const notesCell = document.createElement("td");
+            notesCell.textContent = role.role_notes || "–";
+
+            const actionCell = document.createElement("td");
+
+            const editButton = document.createElement("button");
+            editButton.className = "button small";
+            editButton.textContent = "Bearbeiten";
+            editButton.addEventListener("click", () => {
+                editRole(role);
+            });
+
+            const deleteButton = document.createElement("button");
+            deleteButton.className = "button danger small";
+            deleteButton.textContent = "Löschen";
+            deleteButton.style.marginLeft = "5px";
+            deleteButton.addEventListener("click", () => {
+                deleteRole(role.role_id);
+            });
+
+            actionCell.append(editButton, deleteButton);
+            row.append(personCell, episodeCell, notesCell, actionCell);
+            list.appendChild(row);
+        });
+
+    } catch (error) {
+        status.textContent = error.message;
+    }
+}
+
+/* ============================================================
+   ZUORDNUNG ANLEGEN UND BEARBEITEN
+   ============================================================ */
+
+function resetRoleForm() {
+    currentRoleId = null;
+
+    document.getElementById("role-form").reset();
+    document.getElementById("role-form-heading").textContent =
+        "Neue Figuren-Zuordnung";
+
+    document.getElementById("role-submit").textContent =
+        "Zuordnung speichern";
+
+    hide("role-cancel");
+    document.getElementById("role-form-status").textContent = "";
+}
+
+function cancelRoleEdit() {
+    resetRoleForm();
+}
+
+function editRole(role) {
+    currentRoleId = role.role_id;
+
+    document.getElementById("role-person").value =
+        String(role.person_id);
+
+    document.getElementById("role-episode").value =
+        String(role.episode_id);
+
+    document.getElementById("role-notes").value =
+        role.role_notes || "";
+
+    document.getElementById("role-form-heading").textContent =
+        "Figuren-Zuordnung bearbeiten";
+
+    document.getElementById("role-submit").textContent =
+        "Änderungen speichern";
+
+    show("role-cancel");
+
+    document.getElementById("role-form")
+        .scrollIntoView({ behavior: "smooth" });
+}
+
+document.getElementById("role-form")
+    .addEventListener("submit", async function(event) {
+
+        event.preventDefault();
+
+        if (!currentSpeakerId) return;
+
+        const personId = document.getElementById("role-person").value;
+        const episodeId = document.getElementById("role-episode").value;
+
+        if (!personId || !episodeId) {
+            document.getElementById("role-form-status").textContent =
+                "Bitte wähle eine Figur und eine Hörspielfolge aus.";
+            return;
+        }
+
+        const data = {
+            person_id: Number(personId),
+            episode_id: Number(episodeId),
+            role_notes: document.getElementById("role-notes").value.trim() || null
+        };
+
+        const isEditing = currentRoleId !== null;
+
+        const url = isEditing
+            ? "/api/speakers/" + currentSpeakerId + "/roles/" + currentRoleId
+            : "/api/speakers/" + currentSpeakerId + "/roles";
+
+        const method = isEditing ? "PUT" : "POST";
+
+        const status = document.getElementById("role-form-status");
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    result.detail || "Zuordnung konnte nicht gespeichert werden."
+                );
+            }
+
+            status.textContent = isEditing
+                ? "Zuordnung erfolgreich aktualisiert."
+                : "Zuordnung erfolgreich angelegt.";
+
+            resetRoleForm();
+            await loadSpeakerRoles();
+
+        } catch (error) {
+            status.textContent = "Fehler: " + error.message;
+        }
+    });
+
+/* ============================================================
+   ZUORDNUNG LÖSCHEN
+   ============================================================ */
+
+async function deleteRole(roleId) {
+    const confirmed = confirm(
+        "Möchtest du diese Sprecher-Figuren-Zuordnung wirklich löschen?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(
+            "/api/speakers/" + currentSpeakerId + "/roles/" + roleId,
+            { method: "DELETE" }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                result.detail || "Zuordnung konnte nicht gelöscht werden."
+            );
+        }
+
+        if (currentRoleId === roleId) {
+            resetRoleForm();
+        }
+
+        await loadSpeakerRoles();
+
+    } catch (error) {
+        alert("Fehler: " + error.message);
+    }
+}
+
+/* ============================================================
+   SPRECHER SPEICHERN
+   ============================================================ */
+
+document.getElementById("speaker-form")
+    .addEventListener("submit", async function(event) {
+
+        event.preventDefault();
+
+        const aliases = document.getElementById("aliases")
+            .value
+            .split(/\r?\n/)
+            .map(alias => alias.trim())
+            .filter(alias => alias.length > 0);
+
+        const data = {
+            name: document.getElementById("name").value.trim(),
+            birth_date: document.getElementById("birth-date").value || null,
+            death_date: document.getElementById("death-date").value || null,
+            biography: document.getElementById("biography").value.trim(),
+            notes: document.getElementById("notes").value.trim(),
+            aliases: aliases
+        };
+
+        const status = document.getElementById("form-status");
+        const isEditing = currentSpeakerId !== null;
+
+        const url = isEditing
+            ? "/api/speakers/" + currentSpeakerId
+            : "/api/speakers";
+
+        const method = isEditing ? "PUT" : "POST";
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    result.detail || "Speichern fehlgeschlagen."
+                );
+            }
+
+            status.textContent = isEditing
+                ? "Sprecher erfolgreich aktualisiert."
+                : "Sprecher erfolgreich angelegt.";
+
+            currentSpeakerId = null;
+            currentSpeaker = null;
+
+            document.getElementById("speaker-form").reset();
+
+            await loadSpeakers();
+
+            setTimeout(() => {
+                hide("speaker-form-panel");
+                status.textContent = "";
+            }, 1200);
+
+        } catch (error) {
+            status.textContent = "Fehler: " + error.message;
+        }
+    });
+
+loadSpeakers();
+
+/* Direktaufruf einer Sprecherakte über ?id= */
+
+async function openSpeakerFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const speakerId = params.get("id");
+
+    if (!speakerId || !/^\d+$/.test(speakerId)) {
+        return;
+    }
+
+    await showDetails(Number(speakerId));
+}
+
+openSpeakerFromUrl();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,540 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Die Drei ??? – Archivverwaltung</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: #080808;
+    color: #eee;
+    font-family: Consolas, "Courier New", monospace;
+}
+
+header {
+    min-height: 190px;
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    align-items: center;
+    border: 2px solid white;
+    text-align: center;
+    background: #050505;
+}
+
+.header-image {
+    height: 185px;
+    width: 100%;
+    object-fit: cover;
+}
+
+.header-title h1 {
+    font-size: clamp(24px, 4vw, 48px);
+    margin: 0;
+    letter-spacing: 3px;
+}
+
+.question-marks span:nth-child(1) { color: white; }
+.question-marks span:nth-child(2) { color: #e53935; }
+.question-marks span:nth-child(3) { color: #2196f3; }
+
+.subtitle {
+    color: #e53935;
+    font-size: clamp(16px, 2vw, 28px);
+    font-weight: bold;
+    letter-spacing: 3px;
+    margin-top: 8px;
+}
+
+main {
+    display: flex;
+    min-height: 600px;
+    border: 2px solid white;
+    border-top: none;
+}
+
+nav {
+    width: 260px;
+    flex-shrink: 0;
+    padding: 20px;
+    border-right: 2px solid white;
+}
+
+nav h2 {
+    color: #e53935;
+    font-size: 18px;
+    margin-bottom: 25px;
+}
+
+nav button {
+    display: block;
+    width: 100%;
+    background: #080808;
+    color: #2196f3;
+    border: 1px solid #aaa;
+    padding: 12px;
+    margin-bottom: 9px;
+    text-align: left;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+nav button:hover:not(:disabled) {
+    color: white;
+    border-color: #e53935;
+    background: #241010;
+}
+
+.content {
+    flex: 1;
+    min-width: 0;
+    padding: 25px 35px;
+}
+
+.content h2 {
+    color: #e53935;
+    font-size: 27px;
+    border-bottom: 2px solid white;
+    padding-bottom: 12px;
+}
+
+.search-panel {
+    margin: 20px 0 30px;
+    padding: 20px;
+    border: 2px solid #2196f3;
+    background: #050505;
+}
+
+.search-panel h3 {
+    color: #2196f3;
+    margin-top: 0;
+    font-size: 19px;
+}
+
+.search-row {
+    display: flex;
+    gap: 10px;
+}
+
+.search-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 13px;
+    background: #111;
+    color: white;
+    border: 1px solid #aaa;
+    font-family: inherit;
+    font-size: 16px;
+}
+
+.search-row button {
+    padding: 12px 20px;
+    background: #080808;
+    color: #e53935;
+    border: 1px solid #e53935;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.search-row button:hover {
+    background: #241010;
+    color: white;
+}
+
+.search-hint {
+    color: #999;
+    font-size: 12px;
+    margin-bottom: 0;
+}
+
+#search-status {
+    margin-top: 18px;
+    color: #aaa;
+}
+
+#search-results {
+    margin-top: 15px;
+}
+
+.result-group {
+    margin-top: 25px;
+}
+
+.result-group h3 {
+    color: #e53935;
+    border-bottom: 1px solid #777;
+    padding-bottom: 8px;
+}
+
+.result-card {
+    border: 1px solid #555;
+    padding: 14px;
+    margin: 10px 0;
+    background: #101010;
+}
+
+.result-title {
+    color: #2196f3;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.result-description {
+    color: #ccc;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 9px 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.result-card button {
+    background: #080808;
+    color: white;
+    border: 1px solid #aaa;
+    padding: 8px 12px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.result-card button:hover {
+    border-color: #e53935;
+    color: #e53935;
+}
+
+.welcome-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.9fr) minmax(250px, 1.1fr);
+    align-items: center;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.blacky {
+    width: 100%;
+    max-height: 520px;
+    object-fit: contain;
+}
+
+.welcome-text {
+    font-size: 18px;
+    line-height: 1.7;
+}
+
+.info {
+    margin-top: 35px;
+    padding: 15px;
+    border: 2px solid #2196f3;
+    line-height: 1.8;
+}
+
+.info strong {
+    color: #2196f3;
+}
+
+#database-status {
+    color: #eee;
+}
+
+footer {
+    border: 2px solid white;
+    border-top: none;
+    padding: 15px;
+    color: #aaa;
+    text-align: center;
+}
+
+@media (max-width: 800px) {
+    main { flex-direction: column; }
+    nav {
+        width: 100%;
+        border-right: none;
+        border-bottom: 2px solid white;
+    }
+    .welcome-layout { grid-template-columns: 1fr; }
+    .header-image { height: 120px; }
+    .search-row { flex-direction: column; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <img class="header-image"
+         src="/static/images/leuchtturm_archiv_header.png"
+         alt="Leuchtturm">
+
+    <div class="header-title">
+        <h1>DIE DREI
+            <span class="question-marks">
+                <span>?</span><span>?</span><span>?</span>
+            </span>
+        </h1>
+        <div class="subtitle">ARCHIVVERWALTUNG</div>
+    </div>
+
+    <img class="header-image"
+         src="/static/images/haus_archiv_header.png"
+         alt="Mysteriöses Haus">
+</header>
+
+<main>
+
+<nav>
+    <h2>ARCHIVBEREICHE</h2>
+
+    <button onclick="window.location.href='/episodes'">▶ Hörspielfälle</button>
+    <button onclick="window.location.href='/persons'">▶ Personen und Figuren</button>
+    <button onclick="window.location.href='/speakers'">▶ Sprecher</button>
+    <button onclick="window.location.href='/places'">▶ Schauplätze</button>
+    <button onclick="window.location.href='/objects'">▶ Gegenstände</button>
+    <button onclick="window.location.href='/creatures'">▶ Kreaturen und Monster</button>
+    <button onclick="window.location.href='/organizations'">▶ Organisationen</button>
+    <button onclick="window.location.href='/keywords'">▶ Schlagwörter</button>
+    <button onclick="window.location.href='/sources'">▶ Quellen</button>
+</nav>
+
+<section class="content">
+
+    <h2>GLOBALE ARCHIVSUCHE</h2>
+
+    <div class="search-panel">
+        <h3>ARCHIV DURCHSUCHEN</h3>
+
+        <div class="search-row">
+            <input
+                type="search"
+                id="search-input"
+                placeholder="Suchbegriff eingeben ..."
+                minlength="2"
+                autocomplete="off">
+
+            <button onclick="performSearch()">SUCHEN</button>
+        </div>
+
+        <p class="search-hint">
+            Durchsucht Hörspielfälle, Figuren, Sprecher,
+            Schauplätze, Gegenstände, Kreaturen,
+            Organisationen, Schlagwörter und Quellen.
+            Mindestens zwei Zeichen eingeben.
+        </p>
+
+        <div id="search-status"></div>
+        <div id="search-results"></div>
+    </div>
+
+    <h2>WILLKOMMEN IM FALL-ARCHIV</h2>
+
+    <div class="welcome-layout">
+
+        <img class="blacky"
+             src="/static/images/blacky_archiv.png"
+             alt="Blacky, der Papagei">
+
+        <div class="welcome-text">
+            <p>
+                Willkommen in der internen
+                Verwaltungsoberfläche des
+                Drei-???-Archivs.
+            </p>
+
+            <p>
+                Hier werden die Hörspielfälle,
+                Figuren, Sprecher, Schauplätze
+                und weitere Archivinformationen
+                erfasst und verwaltet.
+            </p>
+
+            <div class="info">
+                <strong>SYSTEMSTATUS:</strong><br>
+                DESKTOP-OBERFLÄCHE AKTIV<br><br>
+
+                <strong>DATENBANK:</strong><br>
+                <span id="database-status">
+                    STATUS WIRD GEPRÜFT ...
+                </span>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+</main>
+
+<footer>
+    DIE DREI ??? – INTERNES ARCHIVSYSTEM
+</footer>
+
+<script>
+const archiveRoutes = {
+    "Hörspielfolge": "/episodes",
+    "Person / Figur": "/persons",
+    "Sprecher": "/speakers",
+    "Schauplatz": "/places",
+    "Gegenstand": "/objects",
+    "Kreatur / Monster": "/creatures",
+    "Organisation": "/organizations",
+    "Schlagwort": "/keywords",
+    "Quelle": "/sources"
+};
+
+async function checkDatabaseStatus() {
+    const statusElement =
+        document.getElementById("database-status");
+
+    try {
+        const response = await fetch("/api/status");
+
+        if (!response.ok) {
+            throw new Error("Statusabfrage fehlgeschlagen");
+        }
+
+        const data = await response.json();
+
+        statusElement.textContent =
+            "VERBUNDEN – " +
+            data.episode_count +
+            " HÖRSPIELFOLGEN ERFASST";
+
+    } catch (error) {
+        statusElement.textContent = "NICHT VERBUNDEN";
+    }
+}
+
+async function performSearch() {
+    const input = document.getElementById("search-input");
+    const status = document.getElementById("search-status");
+    const resultsContainer = document.getElementById("search-results");
+
+    const query = input.value.trim();
+
+    resultsContainer.innerHTML = "";
+
+    if (query.length < 2) {
+        status.textContent =
+            "Bitte mindestens zwei Zeichen eingeben.";
+        return;
+    }
+
+    status.textContent = "ARCHIV WIRD DURCHSUCHT ...";
+
+    try {
+        const response = await fetch(
+            "/api/search?q=" + encodeURIComponent(query)
+        );
+
+        if (!response.ok) {
+            throw new Error("Suchanfrage fehlgeschlagen");
+        }
+
+        const results = await response.json();
+
+        if (results.length === 0) {
+            status.textContent =
+                "KEINE TREFFER FÜR „" + query + "“ GEFUNDEN.";
+            return;
+        }
+
+        status.textContent =
+            results.length + " TREFFER GEFUNDEN.";
+
+        const groups = {};
+
+        results.forEach(result => {
+            if (!groups[result.type]) {
+                groups[result.type] = [];
+            }
+            groups[result.type].push(result);
+        });
+
+        Object.entries(groups).forEach(([type, entries]) => {
+            const group = document.createElement("div");
+            group.className = "result-group";
+
+            const heading = document.createElement("h3");
+            heading.textContent =
+                type.toUpperCase() + " (" + entries.length + ")";
+
+            group.appendChild(heading);
+
+            entries.forEach(entry => {
+                const card = document.createElement("div");
+                card.className = "result-card";
+
+                const title = document.createElement("div");
+                title.className = "result-title";
+                title.textContent = entry.title;
+
+                const description = document.createElement("div");
+                description.className = "result-description";
+                description.textContent = entry.description || "";
+
+                card.appendChild(title);
+                card.appendChild(description);
+
+                if (entry.url) {
+                    const url = document.createElement("div");
+                    url.className = "result-description";
+                    url.textContent = "URL: " + entry.url;
+                    card.appendChild(url);
+                }
+
+                const button = document.createElement("button");
+                button.textContent = "ARCHIVBEREICH ÖFFNEN";
+                button.addEventListener("click", () => {
+                    const route = archiveRoutes[entry.type];
+
+                    if (!route) {
+                        return;
+                    }
+
+                    if (
+                        entry.type === "Person / Figur" ||
+                        entry.type === "Hörspielfolge" ||
+                        entry.type === "Sprecher" ||
+                        entry.type === "Schauplatz" ||
+                        entry.type === "Gegenstand" ||
+                        entry.type === "Kreatur / Monster" ||
+                        entry.type === "Organisation" ||
+                        entry.type === "Schlagwort" ||
+                        entry.type === "Quelle"
+                    ) {
+                        window.location.href =
+                            route + "?id=" + encodeURIComponent(entry.id);
+                    } else {
+                        window.location.href = route;
+                    }
+                });
+
+                card.appendChild(button);
+                group.appendChild(card);
+            });
+
+            resultsContainer.appendChild(group);
+        });
+
+    } catch (error) {
+        status.textContent =
+            "FEHLER BEI DER SUCHE: " + error.message;
+    }
+}
+
+document.getElementById("search-input")
+    .addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+            performSearch();
+        }
+    });
+
+checkDatabaseStatus();
+</script>
+
+</body>
+</html>

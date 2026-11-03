@@ -1,0 +1,569 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Organisationen – Die Drei ??? Archiv</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: #080808;
+    color: #eee;
+    font-family: Consolas, "Courier New", monospace;
+}
+
+header {
+    min-height: 150px;
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    align-items: center;
+    border: 2px solid white;
+    text-align: center;
+    background: #050505;
+}
+
+.header-image {
+    height: 145px;
+    width: 100%;
+    object-fit: cover;
+}
+
+.header-title h1 {
+    font-size: clamp(22px, 3vw, 40px);
+    margin: 0;
+    letter-spacing: 3px;
+}
+
+.question-marks span:nth-child(1) { color: white; }
+.question-marks span:nth-child(2) { color: #e53935; }
+.question-marks span:nth-child(3) { color: #2196f3; }
+
+.subtitle {
+    color: #e53935;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    margin-top: 8px;
+}
+
+nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 15px;
+    border: 2px solid white;
+    border-top: none;
+}
+
+button {
+    background: #080808;
+    color: #2196f3;
+    border: 1px solid #aaa;
+    padding: 10px 14px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+button:hover {
+    color: white;
+    border-color: #e53935;
+    background: #241010;
+}
+
+main {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.8fr) minmax(350px, 1.2fr);
+    gap: 20px;
+    padding: 25px;
+}
+
+section {
+    border: 1px solid white;
+    padding: 20px;
+    min-width: 0;
+}
+
+h2 {
+    color: #e53935;
+    border-bottom: 2px solid white;
+    padding-bottom: 10px;
+}
+
+label {
+    display: block;
+    margin-top: 14px;
+    margin-bottom: 5px;
+    color: #2196f3;
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: 10px;
+    background: #111;
+    color: white;
+    border: 1px solid #777;
+    font-family: inherit;
+}
+
+textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.list-item {
+    padding: 12px;
+    border: 1px solid #555;
+    margin-top: 8px;
+    cursor: pointer;
+}
+
+.list-item:hover, .list-item.active {
+    border-color: #e53935;
+    background: #241010;
+}
+
+.list-item strong {
+    color: #2196f3;
+}
+
+.small {
+    color: #aaa;
+    font-size: 12px;
+}
+
+.assignment {
+    border: 1px solid #555;
+    padding: 12px;
+    margin-top: 10px;
+}
+
+.message {
+    margin-top: 12px;
+    color: #2196f3;
+    white-space: pre-wrap;
+}
+
+.danger {
+    color: #e53935;
+}
+
+@media (max-width: 800px) {
+    header { grid-template-columns: 1fr 2fr 1fr; }
+    .header-image { height: 100px; }
+    main { grid-template-columns: 1fr; padding: 12px; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <img class="header-image"
+         src="/static/images/leuchtturm_archiv_header.png"
+         alt="Leuchtturm">
+
+    <div class="header-title">
+        <h1>DIE DREI
+            <span class="question-marks">
+                <span>?</span><span>?</span><span>?</span>
+            </span>
+        </h1>
+        <div class="subtitle">ORGANISATIONEN</div>
+    </div>
+
+    <img class="header-image"
+         src="/static/images/haus_archiv_header.png"
+         alt="Mysteriöses Haus">
+</header>
+
+<nav>
+    <button onclick="location.href='/'">◀ Startseite</button>
+    <button onclick="location.href='/episodes'">Hörspielfälle</button>
+    <button onclick="location.href='/persons'">Personen und Figuren</button>
+    <button onclick="location.href='/speakers'">Sprecher</button>
+    <button onclick="location.href='/places'">Schauplätze</button>
+    <button onclick="location.href='/objects'">Gegenstände</button>
+    <button onclick="location.href='/creatures'">Kreaturen und Monster</button>
+</nav>
+
+<main>
+
+<section>
+    <h2>ORGANISATIONEN</h2>
+
+    <input
+        type="text"
+        id="search"
+        placeholder="Organisationen suchen ..."
+        oninput="loadOrganizations()"
+    >
+
+    <div id="organization-list"></div>
+    <div id="list-message" class="message"></div>
+</section>
+
+<section>
+    <h2 id="form-title">NEUE ORGANISATION ANLEGEN</h2>
+
+    <input type="hidden" id="organization-id">
+
+    <label for="name">Name der Organisation</label>
+    <input type="text" id="name"
+           placeholder="Name eingeben">
+
+    <label for="description">Beschreibung</label>
+    <textarea id="description"
+        placeholder="Art, Aufgaben, Mitglieder, Hintergrund und Besonderheiten ..."></textarea>
+
+    <div class="actions">
+        <button onclick="saveOrganization()">SPEICHERN</button>
+        <button onclick="resetForm()">NEU / ABBRECHEN</button>
+        <button onclick="deleteOrganization()" class="danger">LÖSCHEN</button>
+    </div>
+
+    <div id="form-message" class="message"></div>
+
+    <div id="assignment-area" hidden>
+        <h2>HÖRSPIELFALL-ZUORDNUNGEN</h2>
+
+        <label for="episode">Hörspielfolge</label>
+        <select id="episode">
+            <option value="">Folge auswählen</option>
+        </select>
+
+        <label for="assignment-notes">Anmerkungen zur Zuordnung</label>
+        <textarea id="assignment-notes"
+            placeholder="Beispielsweise: Auftreten, Erwähnung, Bedeutung für den Fall ..."></textarea>
+
+        <div class="actions">
+            <button onclick="assignEpisode()">FOLGE ZUORDNEN</button>
+        </div>
+
+        <div id="assignment-list"></div>
+        <div id="assignment-message" class="message"></div>
+    </div>
+</section>
+
+</main>
+
+<script>
+let selectedOrganizationId = null;
+
+async function api(url, options = {}) {
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {})
+        }
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Ein Fehler ist aufgetreten.");
+    }
+
+    return data;
+}
+
+async function loadOrganizations() {
+    const search = document.getElementById("search").value;
+
+    try {
+        const organizations = await api(
+            "/api/organizations?search=" + encodeURIComponent(search)
+        );
+
+        const list = document.getElementById("organization-list");
+        list.innerHTML = "";
+
+        if (organizations.length === 0) {
+            list.innerHTML = "<p>Keine Organisationen gefunden.</p>";
+            return;
+        }
+
+        organizations.forEach(organization => {
+            const item = document.createElement("div");
+            item.className = "list-item" +
+                (selectedOrganizationId === organization.id ? " active" : "");
+
+            const title = document.createElement("strong");
+            title.textContent = organization.name;
+
+            const description = document.createElement("div");
+            description.className = "small";
+            description.textContent =
+                organization.description || "Keine Beschreibung";
+
+            item.append(title, description);
+            item.onclick = () => selectOrganization(organization.id);
+
+            list.appendChild(item);
+        });
+
+    } catch (error) {
+        document.getElementById("list-message").textContent = error.message;
+    }
+}
+
+async function loadEpisodes() {
+    try {
+        const episodes = await api("/api/episodes");
+        const select = document.getElementById("episode");
+
+        select.innerHTML = '<option value="">Folge auswählen</option>';
+
+        episodes.forEach(episode => {
+            const option = document.createElement("option");
+            option.value = episode.id;
+            option.textContent =
+                episode.episode_number + " – " + episode.title;
+            select.appendChild(option);
+        });
+
+    } catch (error) {
+        document.getElementById("assignment-message").textContent = error.message;
+    }
+}
+
+async function selectOrganization(id) {
+    try {
+        const organization = await api("/api/organizations/" + id);
+
+        selectedOrganizationId = organization.id;
+        document.getElementById("organization-id").value = organization.id;
+        document.getElementById("name").value = organization.name;
+        document.getElementById("description").value =
+            organization.description || "";
+
+        document.getElementById("form-title").textContent =
+            "ORGANISATION BEARBEITEN";
+
+        document.getElementById("assignment-area").hidden = false;
+
+        await loadAssignments();
+        await loadOrganizations();
+
+        document.getElementById("form-message").textContent =
+            "Organisation ausgewählt.";
+
+    } catch (error) {
+        document.getElementById("form-message").textContent = error.message;
+    }
+}
+
+async function saveOrganization() {
+    const name = document.getElementById("name").value.trim();
+    const description = document.getElementById("description").value;
+
+    if (!name) {
+        document.getElementById("form-message").textContent =
+            "Bitte einen Namen eingeben.";
+        return;
+    }
+
+    const payload = { name, description };
+
+    try {
+        if (selectedOrganizationId) {
+            await api("/api/organizations/" + selectedOrganizationId, {
+                method: "PUT",
+                body: JSON.stringify(payload)
+            });
+
+            document.getElementById("form-message").textContent =
+                "Organisation wurde aktualisiert.";
+
+        } else {
+            const result = await api("/api/organizations", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+
+            selectedOrganizationId = result.id;
+
+            document.getElementById("form-message").textContent =
+                "Organisation wurde angelegt.";
+
+            document.getElementById("assignment-area").hidden = false;
+            document.getElementById("form-title").textContent =
+                "ORGANISATION BEARBEITEN";
+            document.getElementById("organization-id").value = result.id;
+        }
+
+        await loadOrganizations();
+
+    } catch (error) {
+        document.getElementById("form-message").textContent = error.message;
+    }
+}
+
+function resetForm() {
+    selectedOrganizationId = null;
+
+    document.getElementById("organization-id").value = "";
+    document.getElementById("name").value = "";
+    document.getElementById("description").value = "";
+    document.getElementById("form-title").textContent =
+        "NEUE ORGANISATION ANLEGEN";
+    document.getElementById("assignment-area").hidden = true;
+    document.getElementById("form-message").textContent = "";
+    document.getElementById("assignment-message").textContent = "";
+
+    loadOrganizations();
+}
+
+async function deleteOrganization() {
+    if (!selectedOrganizationId) {
+        document.getElementById("form-message").textContent =
+            "Bitte zuerst eine Organisation auswählen.";
+        return;
+    }
+
+    if (!confirm("Möchtest du diese Organisation wirklich löschen?")) {
+        return;
+    }
+
+    try {
+        await api("/api/organizations/" + selectedOrganizationId, {
+            method: "DELETE"
+        });
+
+        document.getElementById("form-message").textContent =
+            "Organisation wurde gelöscht.";
+
+        resetForm();
+
+    } catch (error) {
+        document.getElementById("form-message").textContent = error.message;
+    }
+}
+
+async function loadAssignments() {
+    if (!selectedOrganizationId) return;
+
+    try {
+        const assignments = await api(
+            "/api/organizations/" + selectedOrganizationId + "/episodes"
+        );
+
+        const list = document.getElementById("assignment-list");
+        list.innerHTML = "";
+
+        if (assignments.length === 0) {
+            list.textContent = "Noch keine Hörspielfolgen zugeordnet.";
+            return;
+        }
+
+        assignments.forEach(assignment => {
+            const item = document.createElement("div");
+            item.className = "assignment";
+
+            const title = document.createElement("strong");
+            title.textContent =
+                "Folge " + assignment.episode_number +
+                " – " + assignment.title;
+
+            const notes = document.createElement("p");
+            notes.textContent = assignment.notes || "Keine Anmerkungen.";
+
+            const remove = document.createElement("button");
+            remove.textContent = "ZUORDNUNG ENTFERNEN";
+            remove.onclick = () => removeAssignment(assignment.episode_id);
+
+            item.append(title, notes, remove);
+            list.appendChild(item);
+        });
+
+    } catch (error) {
+        document.getElementById("assignment-message").textContent = error.message;
+    }
+}
+
+async function assignEpisode() {
+    if (!selectedOrganizationId) return;
+
+    const episodeId = document.getElementById("episode").value;
+    const notes = document.getElementById("assignment-notes").value;
+
+    if (!episodeId) {
+        document.getElementById("assignment-message").textContent =
+            "Bitte eine Hörspielfolge auswählen.";
+        return;
+    }
+
+    try {
+        await api(
+            "/api/organizations/" + selectedOrganizationId + "/episodes",
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    episode_id: Number(episodeId),
+                    notes
+                })
+            }
+        );
+
+        document.getElementById("assignment-notes").value = "";
+        document.getElementById("assignment-message").textContent =
+            "Hörspielfolge wurde zugeordnet.";
+
+        await loadAssignments();
+
+    } catch (error) {
+        document.getElementById("assignment-message").textContent = error.message;
+    }
+}
+
+async function removeAssignment(episodeId) {
+    if (!confirm("Diese Zuordnung wirklich entfernen?")) return;
+
+    try {
+        await api(
+            "/api/organizations/" + selectedOrganizationId +
+            "/episodes/" + episodeId,
+            { method: "DELETE" }
+        );
+
+        document.getElementById("assignment-message").textContent =
+            "Zuordnung wurde entfernt.";
+
+        await loadAssignments();
+
+    } catch (error) {
+        document.getElementById("assignment-message").textContent = error.message;
+    }
+}
+
+loadOrganizations();
+loadEpisodes();
+
+/* Direktaufruf einer Organisation über ?id= */
+async function openOrganizationFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const organizationId = params.get("id");
+
+    if (!organizationId || !/^\d+$/.test(organizationId)) {
+        return;
+    }
+
+    await selectOrganization(Number(organizationId));
+}
+
+openOrganizationFromUrl();
+</script>
+
+</body>
+</html>

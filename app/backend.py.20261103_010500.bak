@@ -1,0 +1,3918 @@
+
+from pathlib import Path
+import sqlite3
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
+
+# ============================================================
+# PROJEKTPFADE UND FASTAPI
+# ============================================================
+
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+
+DB_PATH = (
+    PROJECT_DIR
+    / "Archiv"
+    / "database"
+    / "drei_fragezeichen_archiv.db"
+)
+
+APP_DIR = Path(__file__).resolve().parent
+
+app = FastAPI(title="Die drei ??? – Archivverwaltung")
+
+app.mount(
+    "/static",
+    StaticFiles(directory=APP_DIR / "static"),
+    name="static"
+)
+
+
+# ============================================================
+# SEITEN DER ARCHIVVERWALTUNG
+# ============================================================
+
+@app.get("/")
+def homepage():
+    return FileResponse(APP_DIR / "templates" / "index.html")
+
+
+@app.get("/episodes")
+def episodes_page():
+    return FileResponse(APP_DIR / "templates" / "episodes.html")
+
+
+@app.get("/persons")
+def persons_page():
+    return FileResponse(APP_DIR / "templates" / "persons.html")
+
+
+@app.get("/speakers")
+def speakers_page():
+    return FileResponse(APP_DIR / "templates" / "speakers.html")
+
+
+@app.get("/places")
+def places_page():
+    return FileResponse(APP_DIR / "templates" / "places.html")
+
+
+@app.get("/objects")
+def objects_page():
+    return FileResponse(APP_DIR / "templates" / "objects.html")
+
+
+@app.get("/creatures")
+def creatures_page():
+    return FileResponse(APP_DIR / "templates" / "creatures.html")
+
+
+@app.get("/organizations")
+def organizations_page():
+    return FileResponse(APP_DIR / "templates" / "organizations.html")
+
+
+@app.get("/keywords")
+def keywords_page():
+    return FileResponse(APP_DIR / "templates" / "keywords.html")
+
+
+@app.get("/sources")
+def sources_page():
+    return FileResponse(APP_DIR / "templates" / "sources.html")
+
+
+# ============================================================
+# DATENBANKVERBINDUNG
+# ============================================================
+
+def get_connection():
+    if not DB_PATH.exists():
+        raise FileNotFoundError(
+            f"Datenbank nicht gefunden: {DB_PATH}"
+        )
+
+    connection = sqlite3.connect(DB_PATH)
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+
+    return connection
+
+
+# ============================================================
+# DATENMODELLE
+# ============================================================
+
+class Episode(BaseModel):
+    episode_number: int
+    title: str
+    release_date: Optional[str] = None
+    runtime_minutes: Optional[int] = None
+    synopsis: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class Person(BaseModel):
+    name: str
+    description: Optional[str] = None
+    aliases: list[str] = Field(default_factory=list)
+
+
+class PersonEpisodeAssignment(BaseModel):
+    episode_id: int
+    role: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class Speaker(BaseModel):
+    name: str
+    birth_date: Optional[str] = None
+    death_date: Optional[str] = None
+    biography: Optional[str] = None
+    notes: Optional[str] = None
+    aliases: list[str] = Field(default_factory=list)
+
+
+class SpeakerRole(BaseModel):
+    person_id: int
+    episode_id: int
+    role_notes: Optional[str] = None
+
+
+class Place(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class PlaceEpisodeAssignment(BaseModel):
+    episode_id: int
+    notes: Optional[str] = None
+
+
+class ArchiveObject(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class ObjectEpisodeAssignment(BaseModel):
+    episode_id: int
+    notes: Optional[str] = None
+
+
+class Creature(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class CreatureEpisodeAssignment(BaseModel):
+    episode_id: int
+    notes: Optional[str] = None
+
+
+class Organization(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class OrganizationEpisodeAssignment(BaseModel):
+    episode_id: int
+    notes: Optional[str] = None
+
+
+class Keyword(BaseModel):
+    name: str
+
+
+class KeywordEpisodeAssignment(BaseModel):
+    episode_id: int
+
+
+class Source(BaseModel):
+    title: str
+    source_type: Optional[str] = None
+    author: Optional[str] = None
+    publication_date: Optional[str] = None
+    url: Optional[str] = None
+    notes: Optional[str] = None
+    verification_status: str = "Ungeprüft"
+    reliability: str = "Nicht einschätzbar"
+
+
+class SourceEpisodeAssignment(BaseModel):
+    episode_id: int
+    notes: Optional[str] = None
+
+
+class SourceEpisodeNotes(BaseModel):
+    notes: Optional[str] = None
+
+
+# ============================================================
+# STATUS UND DATENBANKTEST
+# ============================================================
+
+@app.get("/api/status")
+def database_status():
+    try:
+        with get_connection() as connection:
+            count = connection.execute(
+                "SELECT COUNT(*) FROM episodes"
+            ).fetchone()[0]
+
+        return {
+            "database": "connected",
+            "episode_count": count
+        }
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=str(error)
+        )
+
+
+# ============================================================
+# HÖRSPIELFOLGEN – API
+# ============================================================
+
+@app.get("/api/episodes")
+def list_episodes(search: str = ""):
+    try:
+        with get_connection() as connection:
+            if search.strip():
+                episodes = connection.execute(
+                    """
+                    SELECT id, episode_number, title,
+                           release_date, runtime_minutes
+                    FROM episodes
+                    WHERE CAST(episode_number AS TEXT) = ?
+                       OR title LIKE ?
+                    ORDER BY episode_number
+                    """,
+                    (search.strip(), f"%{search.strip()}%")
+                ).fetchall()
+            else:
+                episodes = connection.execute(
+                    """
+                    SELECT id, episode_number, title,
+                           release_date, runtime_minutes
+                    FROM episodes
+                    ORDER BY episode_number
+                    """
+                ).fetchall()
+
+        return [dict(episode) for episode in episodes]
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=str(error)
+        )
+
+
+@app.post("/api/episodes")
+def create_episode(episode: Episode):
+    try:
+        with get_connection() as connection:
+            cursor = connection.execute(
+                """
+                INSERT INTO episodes (
+                    episode_number,
+                    title,
+                    release_date,
+                    runtime_minutes,
+                    synopsis,
+                    notes
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    episode.episode_number,
+                    episode.title,
+                    episode.release_date,
+                    episode.runtime_minutes,
+                    episode.synopsis,
+                    episode.notes
+                )
+            )
+
+            new_id = cursor.lastrowid
+
+        return {
+            "success": True,
+            "id": new_id,
+            "message": "Hörspielfolge wurde angelegt."
+        }
+
+    except sqlite3.IntegrityError as error:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Datensatz konnte nicht angelegt werden: {error}"
+        )
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=str(error)
+        )
+
+
+@app.get("/api/episodes/{episode_id}")
+def get_episode(episode_id: int):
+    try:
+        with get_connection() as connection:
+            episode = connection.execute(
+                """
+                SELECT *
+                FROM episodes
+                WHERE id = ?
+                """,
+                (episode_id,)
+            ).fetchone()
+
+        if episode is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Hörspielfolge nicht gefunden."
+            )
+
+        return dict(episode)
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=str(error)
+        )
+
+
+
+@app.get("/api/episodes/{episode_id}/casefile")
+def get_episode_casefile(episode_id: int):
+    try:
+        with get_connection() as connection:
+            episode = connection.execute(
+                "SELECT * FROM episodes WHERE id = ?",
+                (episode_id,)
+            ).fetchone()
+
+            if episode is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Hörspielfolge nicht gefunden."
+                )
+
+            persons = connection.execute(
+                """
+                SELECT
+                    p.id,
+                    p.name,
+                    p.description,
+                    ep.role,
+                    ep.notes,
+                    (
+                        SELECT GROUP_CONCAT(pa.alias, ', ')
+                        FROM person_aliases pa
+                        WHERE pa.person_id = p.id
+                    ) AS aliases
+                FROM episode_persons ep
+                JOIN persons p ON p.id = ep.person_id
+                WHERE ep.episode_id = ?
+                ORDER BY p.name
+                """,
+                (episode_id,)
+            ).fetchall()
+
+            speakers = connection.execute(
+                """
+                SELECT
+                    s.id AS speaker_id,
+                    s.name AS speaker_name,
+                    s.biography,
+                    s.notes AS speaker_notes,
+                    p.id AS person_id,
+                    p.name AS person_name,
+                    sr.role_notes,
+                    (
+                        SELECT GROUP_CONCAT(sa.alias, ', ')
+                        FROM speaker_aliases sa
+                        WHERE sa.speaker_id = s.id
+                    ) AS aliases
+                FROM speaker_roles sr
+                JOIN speakers s ON s.id = sr.speaker_id
+                JOIN persons p ON p.id = sr.person_id
+                WHERE sr.episode_id = ?
+                ORDER BY s.name, p.name
+                """,
+                (episode_id,)
+            ).fetchall()
+
+            places = connection.execute(
+                """
+                SELECT p.id, p.name, p.description, ep.notes
+                FROM episode_places ep
+                JOIN places p ON p.id = ep.place_id
+                WHERE ep.episode_id = ?
+                ORDER BY p.name
+                """,
+                (episode_id,)
+            ).fetchall()
+
+            objects = connection.execute(
+                """
+                SELECT o.id, o.name, o.description, eo.notes
+                FROM episode_objects eo
+                JOIN objects o ON o.id = eo.object_id
+                WHERE eo.episode_id = ?
+                ORDER BY o.name
+                """,
+                (episode_id,)
+            ).fetchall()
+
+            creatures = connection.execute(
+                """
+                SELECT c.id, c.name, c.description, ec.notes
+                FROM episode_creatures ec
+                JOIN creatures c ON c.id = ec.creature_id
+                WHERE ec.episode_id = ?
+                ORDER BY c.name
+                """,
+                (episode_id,)
+            ).fetchall()
+
+            organizations = connection.execute(
+                """
+                SELECT o.id, o.name, o.description, eo.notes
+                FROM episode_organizations eo
+                JOIN organizations o
+                    ON o.id = eo.organization_id
+                WHERE eo.episode_id = ?
+                ORDER BY o.name
+                """,
+                (episode_id,)
+            ).fetchall()
+
+            keywords = connection.execute(
+                """
+                SELECT k.id, k.name
+                FROM episode_keywords ek
+                JOIN keywords k ON k.id = ek.keyword_id
+                WHERE ek.episode_id = ?
+                ORDER BY k.name
+                """,
+                (episode_id,)
+            ).fetchall()
+
+            sources = connection.execute(
+                """
+                SELECT
+                    s.id,
+                    s.title,
+                    s.source_type,
+                    s.author,
+                    s.publication_date,
+                    s.url,
+                    s.notes,
+                    es.notes AS assignment_notes
+                FROM episode_sources es
+                JOIN sources s ON s.id = es.source_id
+                WHERE es.episode_id = ?
+                ORDER BY s.title
+                """,
+                (episode_id,)
+            ).fetchall()
+
+        return {
+            "episode": dict(episode),
+            "persons": [dict(row) for row in persons],
+            "speakers": [dict(row) for row in speakers],
+            "places": [dict(row) for row in places],
+            "objects": [dict(row) for row in objects],
+            "creatures": [dict(row) for row in creatures],
+            "organizations": [dict(row) for row in organizations],
+            "keywords": [dict(row) for row in keywords],
+            "sources": [dict(row) for row in sources]
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=str(error)
+        )
+
+@app.put("/api/episodes/{episode_id}")
+def update_episode(episode_id: int, episode: Episode):
+    try:
+        with get_connection() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE episodes
+                SET episode_number = ?,
+                    title = ?,
+                    release_date = ?,
+                    runtime_minutes = ?,
+                    synopsis = ?,
+                    notes = ?
+                WHERE id = ?
+                """,
+                (
+                    episode.episode_number,
+                    episode.title,
+                    episode.release_date,
+                    episode.runtime_minutes,
+                    episode.synopsis,
+                    episode.notes,
+                    episode_id
+                )
+            )
+
+            if cursor.rowcount == 0:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Hörspielfolge nicht gefunden."
+                )
+
+        return {
+            "success": True,
+            "message": "Hörspielfolge wurde aktualisiert."
+        }
+
+    except HTTPException:
+        raise
+
+    except sqlite3.IntegrityError as error:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Änderung nicht möglich: {error}"
+        )
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=str(error)
+        )
+
+
+@app.delete("/api/episodes/{episode_id}")
+def delete_episode(episode_id: int):
+    try:
+        with get_connection() as conn:
+            existing = conn.execute(
+                "SELECT id FROM episodes WHERE id = ?",
+                (episode_id,)
+            ).fetchone()
+
+            if existing is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Hörspielfolge nicht gefunden."
+                )
+
+            conn.execute(
+                "DELETE FROM speaker_roles WHERE episode_id = ?",
+                (episode_id,)
+            )
+
+            conn.execute(
+                "DELETE FROM episodes WHERE id = ?",
+                (episode_id,)
+            )
+
+            return {
+                "success": True,
+                "message": "Hörspielfolge und ihre Verknüpfungen wurden gelöscht."
+            }
+
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Die Hörspielfolge konnte aufgrund weiterer Verknüpfungen nicht gelöscht werden."
+        )
+
+
+# ============================================================
+# FIGURENVERWALTUNG – API
+# ============================================================
+
+@app.get("/api/persons")
+def list_persons(search: str = ""):
+    with get_connection() as conn:
+        if search.strip():
+            persons = conn.execute(
+                """
+                SELECT DISTINCT p.*
+                FROM persons p
+                LEFT JOIN person_aliases a ON a.person_id = p.id
+                WHERE p.name LIKE ?
+                   OR p.description LIKE ?
+                   OR a.alias LIKE ?
+                ORDER BY p.name COLLATE NOCASE
+                """,
+                (
+                    f"%{search}%",
+                    f"%{search}%",
+                    f"%{search}%"
+                )
+            ).fetchall()
+        else:
+            persons = conn.execute(
+                """
+                SELECT *
+                FROM persons
+                ORDER BY name COLLATE NOCASE
+                """
+            ).fetchall()
+
+        result = []
+
+        for person in persons:
+            aliases = conn.execute(
+                """
+                SELECT alias
+                FROM person_aliases
+                WHERE person_id = ?
+                ORDER BY alias COLLATE NOCASE
+                """,
+                (person["id"],)
+            ).fetchall()
+
+            result.append({
+                "id": person["id"],
+                "name": person["name"],
+                "description": person["description"],
+                "aliases": [a["alias"] for a in aliases]
+            })
+
+        return result
+
+
+@app.post("/api/persons")
+def create_person(person: Person):
+    name = person.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Figurenname darf nicht leer sein."
+        )
+
+    aliases = list(dict.fromkeys(
+        alias.strip()
+        for alias in person.aliases
+        if alias.strip() and alias.strip() != name
+    ))
+
+    try:
+        with get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO persons (name, description)
+                VALUES (?, ?)
+                """,
+                (name, person.description)
+            )
+
+            person_id = cursor.lastrowid
+
+            for alias in aliases:
+                conn.execute(
+                    """
+                    INSERT INTO person_aliases (person_id, alias)
+                    VALUES (?, ?)
+                    """,
+                    (person_id, alias)
+                )
+
+            return {
+                "id": person_id,
+                "message": "Figur erfolgreich angelegt."
+            }
+
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Die Figur konnte nicht angelegt werden."
+        )
+
+
+@app.get("/api/persons/{person_id}")
+def get_person(person_id: int):
+    with get_connection() as conn:
+        person = conn.execute(
+            "SELECT * FROM persons WHERE id = ?",
+            (person_id,)
+        ).fetchone()
+
+        if person is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Figur nicht gefunden."
+            )
+
+        aliases = conn.execute(
+            """
+            SELECT alias
+            FROM person_aliases
+            WHERE person_id = ?
+            ORDER BY alias COLLATE NOCASE
+            """,
+            (person_id,)
+        ).fetchall()
+
+        return {
+            "id": person["id"],
+            "name": person["name"],
+            "description": person["description"],
+            "aliases": [a["alias"] for a in aliases]
+        }
+
+
+@app.put("/api/persons/{person_id}")
+def update_person(person_id: int, person: Person):
+    name = person.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Figurenname darf nicht leer sein."
+        )
+
+    aliases = list(dict.fromkeys(
+        alias.strip()
+        for alias in person.aliases
+        if alias.strip() and alias.strip() != name
+    ))
+
+    try:
+        with get_connection() as conn:
+            existing = conn.execute(
+                "SELECT id FROM persons WHERE id = ?",
+                (person_id,)
+            ).fetchone()
+
+            if existing is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Figur nicht gefunden."
+                )
+
+            conn.execute(
+                """
+                UPDATE persons
+                SET name = ?, description = ?
+                WHERE id = ?
+                """,
+                (name, person.description, person_id)
+            )
+
+            conn.execute(
+                "DELETE FROM person_aliases WHERE person_id = ?",
+                (person_id,)
+            )
+
+            for alias in aliases:
+                conn.execute(
+                    """
+                    INSERT INTO person_aliases (person_id, alias)
+                    VALUES (?, ?)
+                    """,
+                    (person_id, alias)
+                )
+
+            return {
+                "message": "Figur erfolgreich aktualisiert."
+            }
+
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Die Figur konnte nicht aktualisiert werden."
+        )
+
+
+@app.delete("/api/persons/{person_id}")
+def delete_person(person_id: int):
+    try:
+        with get_connection() as conn:
+            existing = conn.execute(
+                "SELECT id FROM persons WHERE id = ?",
+                (person_id,)
+            ).fetchone()
+
+            if existing is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Figur nicht gefunden."
+                )
+
+            conn.execute(
+                "DELETE FROM speaker_roles WHERE person_id = ?",
+                (person_id,)
+            )
+
+            conn.execute(
+                "DELETE FROM persons WHERE id = ?",
+                (person_id,)
+            )
+
+            return {
+                "message": "Figur und ihre Verknüpfungen erfolgreich gelöscht."
+            }
+
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Die Figur kann aufgrund weiterer Verknüpfungen nicht gelöscht werden."
+        )
+
+
+# ============================================================
+# FIGUREN UND HÖRSPIELFOLGEN – ZUORDNUNGEN
+# ============================================================
+
+@app.get("/api/persons/{person_id}/episodes")
+def get_person_episodes(person_id: int):
+    with get_connection() as conn:
+        person = conn.execute(
+            "SELECT id FROM persons WHERE id = ?",
+            (person_id,)
+        ).fetchone()
+
+        if not person:
+            raise HTTPException(
+                status_code=404,
+                detail="Figur nicht gefunden."
+            )
+
+        rows = conn.execute(
+            """
+            SELECT
+                e.id AS episode_id,
+                e.episode_number,
+                e.title,
+                ep.role,
+                ep.notes
+            FROM episode_persons ep
+            JOIN episodes e ON e.id = ep.episode_id
+            WHERE ep.person_id = ?
+            ORDER BY e.episode_number
+            """,
+            (person_id,)
+        ).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+@app.post("/api/persons/{person_id}/episodes")
+def assign_person_to_episode(
+    person_id: int,
+    assignment: PersonEpisodeAssignment
+):
+    with get_connection() as conn:
+        if not conn.execute(
+            "SELECT id FROM persons WHERE id = ?",
+            (person_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Figur nicht gefunden."
+            )
+
+        if not conn.execute(
+            "SELECT id FROM episodes WHERE id = ?",
+            (assignment.episode_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Hörspielfolge nicht gefunden."
+            )
+
+        try:
+            conn.execute(
+                """
+                INSERT INTO episode_persons
+                (episode_id, person_id, role, notes)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    assignment.episode_id,
+                    person_id,
+                    assignment.role,
+                    assignment.notes
+                )
+            )
+
+            conn.commit()
+
+        except sqlite3.IntegrityError:
+            raise HTTPException(
+                status_code=409,
+                detail="Diese Figur ist dieser Folge bereits zugeordnet."
+            )
+
+        return {
+            "message": "Figur wurde der Hörspielfolge zugeordnet."
+        }
+
+
+@app.put("/api/persons/{person_id}/episodes/{episode_id}")
+def update_person_episode(
+    person_id: int,
+    episode_id: int,
+    assignment: PersonEpisodeAssignment
+):
+    if assignment.episode_id != episode_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Die Folgen-ID stimmt nicht überein."
+        )
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE episode_persons
+            SET role = ?, notes = ?
+            WHERE person_id = ? AND episode_id = ?
+            """,
+            (
+                assignment.role,
+                assignment.notes,
+                person_id,
+                episode_id
+            )
+        )
+
+        conn.commit()
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Zuordnung nicht gefunden."
+            )
+
+        return {
+            "message": "Zuordnung wurde aktualisiert."
+        }
+
+
+@app.delete("/api/persons/{person_id}/episodes/{episode_id}")
+def remove_person_episode(person_id: int, episode_id: int):
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            DELETE FROM episode_persons
+            WHERE person_id = ? AND episode_id = ?
+            """,
+            (person_id, episode_id)
+        )
+
+        conn.commit()
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Zuordnung nicht gefunden."
+            )
+
+        return {
+            "message": "Zuordnung wurde entfernt."
+        }
+
+
+# ============================================================
+# SPRECHERVERWALTUNG – API
+# ============================================================
+
+@app.get("/api/speakers")
+def list_speakers(search: str = ""):
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT s.*
+            FROM speakers s
+            LEFT JOIN speaker_aliases sa ON sa.speaker_id = s.id
+            WHERE s.name LIKE ?
+               OR s.biography LIKE ?
+               OR sa.alias LIKE ?
+            ORDER BY s.name COLLATE NOCASE
+            """,
+            (
+                f"%{search}%",
+                f"%{search}%",
+                f"%{search}%"
+            )
+        ).fetchall()
+
+        result = []
+
+        for row in rows:
+            speaker = dict(row)
+
+            aliases = conn.execute(
+                """
+                SELECT alias
+                FROM speaker_aliases
+                WHERE speaker_id = ?
+                ORDER BY alias COLLATE NOCASE
+                """,
+                (speaker["id"],)
+            ).fetchall()
+
+            speaker["aliases"] = [a["alias"] for a in aliases]
+            result.append(speaker)
+
+        return result
+
+
+@app.post("/api/speakers")
+def create_speaker(speaker: Speaker):
+    name = speaker.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Sprechername darf nicht leer sein."
+        )
+
+    aliases = list(dict.fromkeys(
+        alias.strip()
+        for alias in speaker.aliases
+        if alias.strip() and alias.strip() != name
+    ))
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO speakers
+            (name, birth_date, death_date, biography, notes)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                name,
+                speaker.birth_date,
+                speaker.death_date,
+                speaker.biography,
+                speaker.notes
+            )
+        )
+
+        speaker_id = cursor.lastrowid
+
+        for alias in aliases:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO speaker_aliases
+                (speaker_id, alias)
+                VALUES (?, ?)
+                """,
+                (speaker_id, alias)
+            )
+
+        conn.commit()
+
+        return {
+            "id": speaker_id,
+            "message": "Sprecher wurde angelegt."
+        }
+
+
+@app.get("/api/speakers/{speaker_id}")
+def get_speaker(speaker_id: int):
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT *
+            FROM speakers
+            WHERE id = ?
+            """,
+            (speaker_id,)
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=404,
+                detail="Sprecher nicht gefunden."
+            )
+
+        speaker = dict(row)
+
+        aliases = conn.execute(
+            """
+            SELECT alias
+            FROM speaker_aliases
+            WHERE speaker_id = ?
+            ORDER BY alias COLLATE NOCASE
+            """,
+            (speaker_id,)
+        ).fetchall()
+
+        speaker["aliases"] = [a["alias"] for a in aliases]
+
+        return speaker
+
+
+@app.put("/api/speakers/{speaker_id}")
+def update_speaker(speaker_id: int, speaker: Speaker):
+    name = speaker.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Sprechername darf nicht leer sein."
+        )
+
+    aliases = list(dict.fromkeys(
+        alias.strip()
+        for alias in speaker.aliases
+        if alias.strip() and alias.strip() != name
+    ))
+
+    with get_connection() as conn:
+        existing = conn.execute(
+            """
+            SELECT id
+            FROM speakers
+            WHERE id = ?
+            """,
+            (speaker_id,)
+        ).fetchone()
+
+        if not existing:
+            raise HTTPException(
+                status_code=404,
+                detail="Sprecher nicht gefunden."
+            )
+
+        conn.execute(
+            """
+            UPDATE speakers
+            SET name = ?,
+                birth_date = ?,
+                death_date = ?,
+                biography = ?,
+                notes = ?
+            WHERE id = ?
+            """,
+            (
+                name,
+                speaker.birth_date,
+                speaker.death_date,
+                speaker.biography,
+                speaker.notes,
+                speaker_id
+            )
+        )
+
+        conn.execute(
+            """
+            DELETE FROM speaker_aliases
+            WHERE speaker_id = ?
+            """,
+            (speaker_id,)
+        )
+
+        for alias in aliases:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO speaker_aliases
+                (speaker_id, alias)
+                VALUES (?, ?)
+                """,
+                (speaker_id, alias)
+            )
+
+        conn.commit()
+
+        return {
+            "message": "Sprecher wurde aktualisiert."
+        }
+
+
+@app.delete("/api/speakers/{speaker_id}")
+def delete_speaker(speaker_id: int):
+    with get_connection() as conn:
+        existing = conn.execute(
+            "SELECT id FROM speakers WHERE id = ?",
+            (speaker_id,)
+        ).fetchone()
+
+        if existing is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Sprecher nicht gefunden."
+            )
+
+        conn.execute(
+            "DELETE FROM speaker_roles WHERE speaker_id = ?",
+            (speaker_id,)
+        )
+
+        conn.execute(
+            "DELETE FROM speaker_aliases WHERE speaker_id = ?",
+            (speaker_id,)
+        )
+
+        conn.execute(
+            "DELETE FROM speakers WHERE id = ?",
+            (speaker_id,)
+        )
+
+        return {
+            "message": "Sprecher und seine Verknüpfungen wurden gelöscht."
+        }
+
+
+# ============================================================
+# SPRECHER – FIGUREN UND HÖRSPIELFOLGEN
+# ============================================================
+
+@app.get("/api/speakers/{speaker_id}/roles")
+def get_speaker_roles(speaker_id: int):
+    with get_connection() as conn:
+        speaker = conn.execute(
+            "SELECT id FROM speakers WHERE id = ?",
+            (speaker_id,)
+        ).fetchone()
+
+        if not speaker:
+            raise HTTPException(
+                status_code=404,
+                detail="Sprecher nicht gefunden."
+            )
+
+        rows = conn.execute(
+            """
+            SELECT
+                sr.id AS role_id,
+                p.id AS person_id,
+                p.name AS person_name,
+                e.id AS episode_id,
+                e.episode_number,
+                e.title AS episode_title,
+                sr.role_notes
+            FROM speaker_roles sr
+            JOIN persons p ON p.id = sr.person_id
+            JOIN episodes e ON e.id = sr.episode_id
+            WHERE sr.speaker_id = ?
+            ORDER BY e.episode_number, p.name COLLATE NOCASE
+            """,
+            (speaker_id,)
+        ).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+@app.post("/api/speakers/{speaker_id}/roles")
+def create_speaker_role(
+    speaker_id: int,
+    assignment: SpeakerRole
+):
+    with get_connection() as conn:
+        if not conn.execute(
+            "SELECT id FROM speakers WHERE id = ?",
+            (speaker_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Sprecher nicht gefunden."
+            )
+
+        if not conn.execute(
+            "SELECT id FROM persons WHERE id = ?",
+            (assignment.person_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Figur nicht gefunden."
+            )
+
+        if not conn.execute(
+            "SELECT id FROM episodes WHERE id = ?",
+            (assignment.episode_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Hörspielfolge nicht gefunden."
+            )
+
+        try:
+            cursor = conn.execute(
+                """
+                INSERT INTO speaker_roles
+                (speaker_id, person_id, episode_id, role_notes)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    speaker_id,
+                    assignment.person_id,
+                    assignment.episode_id,
+                    assignment.role_notes
+                )
+            )
+
+            conn.commit()
+
+            return {
+                "id": cursor.lastrowid,
+                "message": "Sprecher-Figuren-Zuordnung wurde angelegt."
+            }
+
+        except sqlite3.IntegrityError:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Diese Zuordnung zwischen Sprecher, Figur und Folge "
+                    "existiert bereits."
+                )
+            )
+
+
+@app.put("/api/speakers/{speaker_id}/roles/{role_id}")
+def update_speaker_role(
+    speaker_id: int,
+    role_id: int,
+    assignment: SpeakerRole
+):
+    with get_connection() as conn:
+        if not conn.execute(
+            "SELECT id FROM speakers WHERE id = ?",
+            (speaker_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Sprecher nicht gefunden."
+            )
+
+        if not conn.execute(
+            "SELECT id FROM persons WHERE id = ?",
+            (assignment.person_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Figur nicht gefunden."
+            )
+
+        if not conn.execute(
+            "SELECT id FROM episodes WHERE id = ?",
+            (assignment.episode_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Hörspielfolge nicht gefunden."
+            )
+
+        try:
+            cursor = conn.execute(
+                """
+                UPDATE speaker_roles
+                SET person_id = ?,
+                    episode_id = ?,
+                    role_notes = ?
+                WHERE id = ? AND speaker_id = ?
+                """,
+                (
+                    assignment.person_id,
+                    assignment.episode_id,
+                    assignment.role_notes,
+                    role_id,
+                    speaker_id
+                )
+            )
+
+            if cursor.rowcount == 0:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Sprecher-Figuren-Zuordnung nicht gefunden."
+                )
+
+            conn.commit()
+
+            return {
+                "message": "Sprecher-Figuren-Zuordnung wurde aktualisiert."
+            }
+
+        except sqlite3.IntegrityError:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Diese Zuordnung existiert bereits. "
+                    "Bitte prüfe Sprecher, Figur und Folge."
+                )
+            )
+
+
+@app.delete("/api/speakers/{speaker_id}/roles/{role_id}")
+def delete_speaker_role(speaker_id: int, role_id: int):
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            DELETE FROM speaker_roles
+            WHERE id = ? AND speaker_id = ?
+            """,
+            (role_id, speaker_id)
+        )
+
+        conn.commit()
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Sprecher-Figuren-Zuordnung nicht gefunden."
+            )
+
+        return {
+            "message": "Sprecher-Figuren-Zuordnung wurde gelöscht."
+        }
+
+
+# ============================================================
+# SCHAUPlATZVERWALTUNG – API
+# ============================================================
+
+@app.get("/api/places")
+def list_places(search: str = ""):
+    with get_connection() as conn:
+        if search.strip():
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM places
+                WHERE name LIKE ? OR description LIKE ?
+                ORDER BY name COLLATE NOCASE
+                """,
+                (f"%{search.strip()}%", f"%{search.strip()}%")
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM places
+                ORDER BY name COLLATE NOCASE
+                """
+            ).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+@app.post("/api/places")
+def create_place(place: Place):
+    name = place.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Schauplatzname darf nicht leer sein."
+        )
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO places (name, description)
+            VALUES (?, ?)
+            """,
+            (name, place.description)
+        )
+
+        return {
+            "id": cursor.lastrowid,
+            "message": "Schauplatz wurde angelegt."
+        }
+
+
+@app.get("/api/places/{place_id}")
+def get_place(place_id: int):
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM places WHERE id = ?",
+            (place_id,)
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=404,
+                detail="Schauplatz nicht gefunden."
+            )
+
+        return dict(row)
+
+
+@app.put("/api/places/{place_id}")
+def update_place(place_id: int, place: Place):
+    name = place.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Schauplatzname darf nicht leer sein."
+        )
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE places
+            SET name = ?, description = ?
+            WHERE id = ?
+            """,
+            (name, place.description, place_id)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Schauplatz nicht gefunden."
+            )
+
+        return {
+            "message": "Schauplatz wurde aktualisiert."
+        }
+
+
+@app.delete("/api/places/{place_id}")
+def delete_place(place_id: int):
+    with get_connection() as conn:
+        try:
+            cursor = conn.execute(
+                "DELETE FROM places WHERE id = ?",
+                (place_id,)
+            )
+
+            if cursor.rowcount == 0:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Schauplatz nicht gefunden."
+                )
+
+            return {
+                "message": "Schauplatz wurde gelöscht."
+            }
+
+        except sqlite3.IntegrityError:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Der Schauplatz ist noch Hörspielfolgen zugeordnet. "
+                    "Bitte entferne zuerst diese Zuordnungen."
+                )
+            )
+
+
+# ============================================================
+# SCHAUPlÄTZE – HÖRSPIELFOLGEN-ZUORDNUNGEN
+# ============================================================
+
+@app.get("/api/places/{place_id}/episodes")
+def get_place_episodes(place_id: int):
+    with get_connection() as conn:
+        if not conn.execute(
+            "SELECT id FROM places WHERE id = ?",
+            (place_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Schauplatz nicht gefunden."
+            )
+
+        rows = conn.execute(
+            """
+            SELECT
+                e.id AS episode_id,
+                e.episode_number,
+                e.title,
+                ep.notes
+            FROM episode_places ep
+            JOIN episodes e ON e.id = ep.episode_id
+            WHERE ep.place_id = ?
+            ORDER BY e.episode_number
+            """,
+            (place_id,)
+        ).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+@app.post("/api/places/{place_id}/episodes")
+def assign_place_to_episode(
+    place_id: int,
+    assignment: PlaceEpisodeAssignment
+):
+    with get_connection() as conn:
+        if not conn.execute(
+            "SELECT id FROM places WHERE id = ?",
+            (place_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Schauplatz nicht gefunden."
+            )
+
+        if not conn.execute(
+            "SELECT id FROM episodes WHERE id = ?",
+            (assignment.episode_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Hörspielfolge nicht gefunden."
+            )
+
+        try:
+            conn.execute(
+                """
+                INSERT INTO episode_places
+                (episode_id, place_id, notes)
+                VALUES (?, ?, ?)
+                """,
+                (
+                    assignment.episode_id,
+                    place_id,
+                    assignment.notes
+                )
+            )
+
+            return {
+                "message": "Schauplatz wurde der Hörspielfolge zugeordnet."
+            }
+
+        except sqlite3.IntegrityError:
+            raise HTTPException(
+                status_code=409,
+                detail="Dieser Schauplatz ist dieser Folge bereits zugeordnet."
+            )
+
+
+@app.delete("/api/places/{place_id}/episodes/{episode_id}")
+def remove_place_episode(place_id: int, episode_id: int):
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            DELETE FROM episode_places
+            WHERE place_id = ? AND episode_id = ?
+            """,
+            (place_id, episode_id)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Zuordnung nicht gefunden."
+            )
+
+        return {
+            "message": "Schauplatz-Zuordnung wurde entfernt."
+        }
+
+
+# ============================================================
+# GEGENSTANDSVERWALTUNG – API
+# ============================================================
+
+@app.get("/api/objects")
+def list_objects(search: str = ""):
+    with get_connection() as conn:
+        if search.strip():
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM objects
+                WHERE name LIKE ? OR description LIKE ?
+                ORDER BY name COLLATE NOCASE
+                """,
+                (
+                    f"%{search.strip()}%",
+                    f"%{search.strip()}%"
+                )
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM objects
+                ORDER BY name COLLATE NOCASE
+                """
+            ).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+@app.post("/api/objects")
+def create_object(item: ArchiveObject):
+    name = item.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Gegenstandsname darf nicht leer sein."
+        )
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO objects (name, description)
+            VALUES (?, ?)
+            """,
+            (name, item.description)
+        )
+
+        return {
+            "id": cursor.lastrowid,
+            "message": "Gegenstand wurde angelegt."
+        }
+
+
+@app.get("/api/objects/{object_id}")
+def get_object(object_id: int):
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM objects WHERE id = ?",
+            (object_id,)
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=404,
+                detail="Gegenstand nicht gefunden."
+            )
+
+        return dict(row)
+
+
+@app.put("/api/objects/{object_id}")
+def update_object(object_id: int, item: ArchiveObject):
+    name = item.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Gegenstandsname darf nicht leer sein."
+        )
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE objects
+            SET name = ?, description = ?
+            WHERE id = ?
+            """,
+            (name, item.description, object_id)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Gegenstand nicht gefunden."
+            )
+
+        return {
+            "message": "Gegenstand wurde aktualisiert."
+        }
+
+
+@app.delete("/api/objects/{object_id}")
+def delete_object(object_id: int):
+    with get_connection() as conn:
+        try:
+            cursor = conn.execute(
+                "DELETE FROM objects WHERE id = ?",
+                (object_id,)
+            )
+
+            if cursor.rowcount == 0:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Gegenstand nicht gefunden."
+                )
+
+            return {
+                "message": "Gegenstand wurde gelöscht."
+            }
+
+        except sqlite3.IntegrityError:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Der Gegenstand ist noch Hörspielfolgen zugeordnet. "
+                    "Bitte entferne zuerst diese Zuordnungen."
+                )
+            )
+
+
+# ============================================================
+# GEGENSTÄNDE – HÖRSPIELFOLGEN-ZUORDNUNGEN
+# ============================================================
+
+@app.get("/api/objects/{object_id}/episodes")
+def get_object_episodes(object_id: int):
+    with get_connection() as conn:
+        if not conn.execute(
+            "SELECT id FROM objects WHERE id = ?",
+            (object_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Gegenstand nicht gefunden."
+            )
+
+        rows = conn.execute(
+            """
+            SELECT
+                e.id AS episode_id,
+                e.episode_number,
+                e.title,
+                eo.notes
+            FROM episode_objects eo
+            JOIN episodes e ON e.id = eo.episode_id
+            WHERE eo.object_id = ?
+            ORDER BY e.episode_number
+            """,
+            (object_id,)
+        ).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+@app.post("/api/objects/{object_id}/episodes")
+def assign_object_to_episode(
+    object_id: int,
+    assignment: ObjectEpisodeAssignment
+):
+    with get_connection() as conn:
+        if not conn.execute(
+            "SELECT id FROM objects WHERE id = ?",
+            (object_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Gegenstand nicht gefunden."
+            )
+
+        if not conn.execute(
+            "SELECT id FROM episodes WHERE id = ?",
+            (assignment.episode_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Hörspielfolge nicht gefunden."
+            )
+
+        try:
+            conn.execute(
+                """
+                INSERT INTO episode_objects
+                (episode_id, object_id, notes)
+                VALUES (?, ?, ?)
+                """,
+                (
+                    assignment.episode_id,
+                    object_id,
+                    assignment.notes
+                )
+            )
+
+            return {
+                "message": "Gegenstand wurde der Hörspielfolge zugeordnet."
+            }
+
+        except sqlite3.IntegrityError:
+            raise HTTPException(
+                status_code=409,
+                detail="Dieser Gegenstand ist dieser Folge bereits zugeordnet."
+            )
+
+
+@app.delete("/api/objects/{object_id}/episodes/{episode_id}")
+def remove_object_episode(object_id: int, episode_id: int):
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            DELETE FROM episode_objects
+            WHERE object_id = ? AND episode_id = ?
+            """,
+            (object_id, episode_id)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Zuordnung nicht gefunden."
+            )
+
+        return {
+            "message": "Gegenstands-Zuordnung wurde entfernt."
+        }
+
+# ============================================================
+# KREATUREN UND MONSTER – API
+# ============================================================
+
+@app.get("/api/creatures")
+def list_creatures(search: str = ""):
+    with get_connection() as conn:
+        if search.strip():
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM creatures
+                WHERE name LIKE ? OR description LIKE ?
+                ORDER BY name COLLATE NOCASE
+                """,
+                (
+                    f"%{search.strip()}%",
+                    f"%{search.strip()}%"
+                )
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM creatures
+                ORDER BY name COLLATE NOCASE
+                """
+            ).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+@app.post("/api/creatures")
+def create_creature(creature: Creature):
+    name = creature.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Name der Kreatur darf nicht leer sein."
+        )
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO creatures (name, description)
+            VALUES (?, ?)
+            """,
+            (name, creature.description)
+        )
+
+        return {
+            "id": cursor.lastrowid,
+            "message": "Kreatur wurde angelegt."
+        }
+
+
+@app.get("/api/creatures/{creature_id}")
+def get_creature(creature_id: int):
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM creatures WHERE id = ?",
+            (creature_id,)
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=404,
+                detail="Kreatur nicht gefunden."
+            )
+
+        return dict(row)
+
+
+@app.put("/api/creatures/{creature_id}")
+def update_creature(creature_id: int, creature: Creature):
+    name = creature.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Name der Kreatur darf nicht leer sein."
+        )
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE creatures
+            SET name = ?, description = ?
+            WHERE id = ?
+            """,
+            (name, creature.description, creature_id)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Kreatur nicht gefunden."
+            )
+
+        return {
+            "message": "Kreatur wurde aktualisiert."
+        }
+
+
+@app.delete("/api/creatures/{creature_id}")
+def delete_creature(creature_id: int):
+    with get_connection() as conn:
+        try:
+            cursor = conn.execute(
+                "DELETE FROM creatures WHERE id = ?",
+                (creature_id,)
+            )
+
+            if cursor.rowcount == 0:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Kreatur nicht gefunden."
+                )
+
+            return {
+                "message": "Kreatur wurde gelöscht."
+            }
+
+        except sqlite3.IntegrityError:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Die Kreatur ist noch Hörspielfolgen zugeordnet. "
+                    "Bitte entferne zuerst diese Zuordnungen."
+                )
+            )
+
+
+# ============================================================
+# KREATUREN – HÖRSPIELFOLGEN-ZUORDNUNGEN
+# ============================================================
+
+@app.get("/api/creatures/{creature_id}/episodes")
+def get_creature_episodes(creature_id: int):
+    with get_connection() as conn:
+        if not conn.execute(
+            "SELECT id FROM creatures WHERE id = ?",
+            (creature_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Kreatur nicht gefunden."
+            )
+
+        rows = conn.execute(
+            """
+            SELECT
+                e.id AS episode_id,
+                e.episode_number,
+                e.title,
+                ec.notes
+            FROM episode_creatures ec
+            JOIN episodes e ON e.id = ec.episode_id
+            WHERE ec.creature_id = ?
+            ORDER BY e.episode_number
+            """,
+            (creature_id,)
+        ).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+@app.post("/api/creatures/{creature_id}/episodes")
+def assign_creature_to_episode(
+    creature_id: int,
+    assignment: CreatureEpisodeAssignment
+):
+    with get_connection() as conn:
+        if not conn.execute(
+            "SELECT id FROM creatures WHERE id = ?",
+            (creature_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Kreatur nicht gefunden."
+            )
+
+        if not conn.execute(
+            "SELECT id FROM episodes WHERE id = ?",
+            (assignment.episode_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Hörspielfolge nicht gefunden."
+            )
+
+        try:
+            conn.execute(
+                """
+                INSERT INTO episode_creatures
+                (episode_id, creature_id, notes)
+                VALUES (?, ?, ?)
+                """,
+                (
+                    assignment.episode_id,
+                    creature_id,
+                    assignment.notes
+                )
+            )
+
+            return {
+                "message": "Kreatur wurde der Hörspielfolge zugeordnet."
+            }
+
+        except sqlite3.IntegrityError:
+            raise HTTPException(
+                status_code=409,
+                detail="Diese Kreatur ist dieser Folge bereits zugeordnet."
+            )
+
+
+@app.delete("/api/creatures/{creature_id}/episodes/{episode_id}")
+def remove_creature_episode(creature_id: int, episode_id: int):
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            DELETE FROM episode_creatures
+            WHERE creature_id = ? AND episode_id = ?
+            """,
+            (creature_id, episode_id)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Zuordnung nicht gefunden."
+            )
+
+        return {
+            "message": "Kreatur-Zuordnung wurde entfernt."
+        }
+
+
+
+# ============================================================
+# ORGANISATIONSVERWALTUNG – API
+# ============================================================
+
+@app.get("/api/organizations")
+def list_organizations(search: str = ""):
+    with get_connection() as conn:
+        if search.strip():
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM organizations
+                WHERE name LIKE ? OR description LIKE ?
+                ORDER BY name COLLATE NOCASE
+                """,
+                (
+                    f"%{search.strip()}%",
+                    f"%{search.strip()}%"
+                )
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM organizations
+                ORDER BY name COLLATE NOCASE
+                """
+            ).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+@app.post("/api/organizations")
+def create_organization(organization: Organization):
+    name = organization.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Organisationsname darf nicht leer sein."
+        )
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO organizations (name, description)
+            VALUES (?, ?)
+            """,
+            (name, organization.description)
+        )
+
+        return {
+            "id": cursor.lastrowid,
+            "message": "Organisation wurde angelegt."
+        }
+
+
+@app.get("/api/organizations/{organization_id}")
+def get_organization(organization_id: int):
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM organizations WHERE id = ?",
+            (organization_id,)
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=404,
+                detail="Organisation nicht gefunden."
+            )
+
+        return dict(row)
+
+
+@app.put("/api/organizations/{organization_id}")
+def update_organization(
+    organization_id: int,
+    organization: Organization
+):
+    name = organization.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Organisationsname darf nicht leer sein."
+        )
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE organizations
+            SET name = ?, description = ?
+            WHERE id = ?
+            """,
+            (name, organization.description, organization_id)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Organisation nicht gefunden."
+            )
+
+        return {
+            "message": "Organisation wurde aktualisiert."
+        }
+
+
+@app.delete("/api/organizations/{organization_id}")
+def delete_organization(organization_id: int):
+    with get_connection() as conn:
+        try:
+            cursor = conn.execute(
+                "DELETE FROM organizations WHERE id = ?",
+                (organization_id,)
+            )
+
+            if cursor.rowcount == 0:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Organisation nicht gefunden."
+                )
+
+            return {
+                "message": "Organisation wurde gelöscht."
+            }
+
+        except sqlite3.IntegrityError:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Die Organisation ist noch Hörspielfolgen zugeordnet. "
+                    "Bitte entferne zuerst diese Zuordnungen."
+                )
+            )
+
+
+# ============================================================
+# ORGANISATIONEN – HÖRSPIELFOLGEN-ZUORDNUNGEN
+# ============================================================
+
+@app.get("/api/organizations/{organization_id}/episodes")
+def get_organization_episodes(organization_id: int):
+    with get_connection() as conn:
+        if not conn.execute(
+            "SELECT id FROM organizations WHERE id = ?",
+            (organization_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Organisation nicht gefunden."
+            )
+
+        rows = conn.execute(
+            """
+            SELECT
+                e.id AS episode_id,
+                e.episode_number,
+                e.title,
+                eo.notes
+            FROM episode_organizations eo
+            JOIN episodes e ON e.id = eo.episode_id
+            WHERE eo.organization_id = ?
+            ORDER BY e.episode_number
+            """,
+            (organization_id,)
+        ).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+@app.post("/api/organizations/{organization_id}/episodes")
+def assign_organization_to_episode(
+    organization_id: int,
+    assignment: OrganizationEpisodeAssignment
+):
+    with get_connection() as conn:
+        if not conn.execute(
+            "SELECT id FROM organizations WHERE id = ?",
+            (organization_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Organisation nicht gefunden."
+            )
+
+        if not conn.execute(
+            "SELECT id FROM episodes WHERE id = ?",
+            (assignment.episode_id,)
+        ).fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Hörspielfolge nicht gefunden."
+            )
+
+        try:
+            conn.execute(
+                """
+                INSERT INTO episode_organizations
+                (episode_id, organization_id, notes)
+                VALUES (?, ?, ?)
+                """,
+                (
+                    assignment.episode_id,
+                    organization_id,
+                    assignment.notes
+                )
+            )
+
+            return {
+                "message": (
+                    "Organisation wurde der Hörspielfolge zugeordnet."
+                )
+            }
+
+        except sqlite3.IntegrityError:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Diese Organisation ist dieser Folge bereits zugeordnet."
+                )
+            )
+
+
+@app.delete(
+    "/api/organizations/{organization_id}/episodes/{episode_id}"
+)
+def remove_organization_episode(
+    organization_id: int,
+    episode_id: int
+):
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            DELETE FROM episode_organizations
+            WHERE organization_id = ? AND episode_id = ?
+            """,
+            (organization_id, episode_id)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Zuordnung nicht gefunden."
+            )
+
+        return {
+            "message": "Organisations-Zuordnung wurde entfernt."
+        }
+
+
+
+# ---------------------------------------------------------
+# SCHLAGWÖRTER
+# ---------------------------------------------------------
+
+@app.get("/api/keywords")
+def get_keywords(search: str = ""):
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, name
+            FROM keywords
+            WHERE name LIKE ?
+            ORDER BY name COLLATE NOCASE
+            """,
+            (f"%{search}%",)
+        ).fetchall()
+
+    return [dict(row) for row in rows]
+
+
+@app.post("/api/keywords")
+def create_keyword(keyword: Keyword):
+    name = keyword.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Bitte einen Namen für das Schlagwort eingeben."
+        )
+
+    try:
+        with get_connection() as conn:
+            cursor = conn.execute(
+                "INSERT INTO keywords (name) VALUES (?)",
+                (name,)
+            )
+            keyword_id = cursor.lastrowid
+
+        return {"id": keyword_id, "name": name}
+
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Dieses Schlagwort existiert bereits."
+        )
+
+
+@app.get("/api/keywords/{keyword_id}")
+def get_keyword(keyword_id: int):
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id, name FROM keywords WHERE id = ?",
+            (keyword_id,)
+        ).fetchone()
+
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Schlagwort nicht gefunden."
+        )
+
+    return dict(row)
+
+
+@app.put("/api/keywords/{keyword_id}")
+def update_keyword(keyword_id: int, keyword: Keyword):
+    name = keyword.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Bitte einen Namen für das Schlagwort eingeben."
+        )
+
+    try:
+        with get_connection() as conn:
+            cursor = conn.execute(
+                "UPDATE keywords SET name = ? WHERE id = ?",
+                (name, keyword_id)
+            )
+
+            if cursor.rowcount == 0:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Schlagwort nicht gefunden."
+                )
+
+        return {"id": keyword_id, "name": name}
+
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Dieses Schlagwort existiert bereits."
+        )
+
+
+@app.delete("/api/keywords/{keyword_id}")
+def delete_keyword(keyword_id: int):
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "DELETE FROM keywords WHERE id = ?",
+            (keyword_id,)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Schlagwort nicht gefunden."
+            )
+
+    return {"message": "Schlagwort gelöscht."}
+
+
+@app.get("/api/keywords/{keyword_id}/episodes")
+def get_keyword_episodes(keyword_id: int):
+    with get_connection() as conn:
+        keyword = conn.execute(
+            "SELECT id FROM keywords WHERE id = ?",
+            (keyword_id,)
+        ).fetchone()
+
+        if keyword is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Schlagwort nicht gefunden."
+            )
+
+        rows = conn.execute(
+            """
+            SELECT
+                e.id AS episode_id,
+                e.episode_number,
+                e.title
+            FROM episode_keywords ek
+            JOIN episodes e ON e.id = ek.episode_id
+            WHERE ek.keyword_id = ?
+            ORDER BY e.episode_number
+            """,
+            (keyword_id,)
+        ).fetchall()
+
+    return [dict(row) for row in rows]
+
+
+@app.post("/api/keywords/{keyword_id}/episodes")
+def assign_keyword_episode(
+    keyword_id: int,
+    assignment: KeywordEpisodeAssignment
+):
+    try:
+        with get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO episode_keywords (episode_id, keyword_id)
+                VALUES (?, ?)
+                """,
+                (assignment.episode_id, keyword_id)
+            )
+
+        return {"message": "Schlagwort zugeordnet."}
+
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Die Zuordnung existiert bereits oder die Folge bzw. das Schlagwort wurde nicht gefunden."
+        )
+
+
+@app.delete("/api/keywords/{keyword_id}/episodes/{episode_id}")
+def remove_keyword_episode(keyword_id: int, episode_id: int):
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            DELETE FROM episode_keywords
+            WHERE keyword_id = ? AND episode_id = ?
+            """,
+            (keyword_id, episode_id)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Zuordnung nicht gefunden."
+            )
+
+    return {"message": "Zuordnung entfernt."}
+
+
+
+# ---------------------------------------------------------
+# QUELLEN
+# ---------------------------------------------------------
+
+@app.get("/api/sources")
+def get_sources(
+    search: str = "",
+    source_type: str = "",
+    verification_status: str = "",
+    reliability: str = ""
+):
+    conditions = []
+    parameters = []
+
+    if search.strip():
+        conditions.append(
+            "(title LIKE ? OR author LIKE ? OR source_type LIKE ?)"
+        )
+        search_value = f"%{search.strip()}%"
+        parameters.extend([search_value, search_value, search_value])
+
+    if source_type:
+        conditions.append("source_type = ?")
+        parameters.append(source_type)
+
+    if verification_status:
+        conditions.append("verification_status = ?")
+        parameters.append(verification_status)
+
+    if reliability:
+        conditions.append("reliability = ?")
+        parameters.append(reliability)
+
+    query = """
+        SELECT id, title, source_type, author,
+               publication_date, url, notes,
+               verification_status, reliability
+        FROM sources
+    """
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    query += " ORDER BY title COLLATE NOCASE"
+
+    with get_connection() as conn:
+        rows = conn.execute(query, parameters).fetchall()
+
+    return [dict(row) for row in rows]
+
+
+@app.post("/api/sources")
+def create_source(source: Source):
+    title = source.title.strip()
+
+    if not title:
+        raise HTTPException(
+            status_code=400,
+            detail="Bitte einen Titel für die Quelle eingeben."
+        )
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO sources
+                (title, source_type, author, publication_date, url, notes,
+                 verification_status, reliability)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                title,
+                source.source_type,
+                source.author,
+                source.publication_date,
+                source.url,
+                source.notes,
+                source.verification_status,
+                source.reliability
+            )
+        )
+
+        source_id = cursor.lastrowid
+
+    return {"id": source_id, "title": title}
+
+
+@app.get("/api/sources/{source_id}")
+def get_source(source_id: int):
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT id, title, source_type, author,
+                   publication_date, url, notes,
+                   verification_status, reliability
+            FROM sources
+            WHERE id = ?
+            """,
+            (source_id,)
+        ).fetchone()
+
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Quelle nicht gefunden."
+        )
+
+    return dict(row)
+
+
+@app.put("/api/sources/{source_id}")
+def update_source(source_id: int, source: Source):
+    title = source.title.strip()
+
+    if not title:
+        raise HTTPException(
+            status_code=400,
+            detail="Bitte einen Titel für die Quelle eingeben."
+        )
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE sources
+            SET title = ?,
+                source_type = ?,
+                author = ?,
+                publication_date = ?,
+                url = ?,
+                notes = ?,
+                verification_status = ?,
+                reliability = ?
+            WHERE id = ?
+            """,
+            (
+                title,
+                source.source_type,
+                source.author,
+                source.publication_date,
+                source.url,
+                source.notes,
+                source.verification_status,
+                source.reliability,
+                source_id
+            )
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Quelle nicht gefunden."
+            )
+
+    return {"id": source_id, "title": title}
+
+
+@app.delete("/api/sources/{source_id}")
+def delete_source(source_id: int):
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "DELETE FROM sources WHERE id = ?",
+            (source_id,)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Quelle nicht gefunden."
+            )
+
+    return {"message": "Quelle gelöscht."}
+
+
+@app.get("/api/sources/{source_id}/episodes")
+def get_source_episodes(source_id: int):
+    with get_connection() as conn:
+        source = conn.execute(
+            "SELECT id FROM sources WHERE id = ?",
+            (source_id,)
+        ).fetchone()
+
+        if source is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Quelle nicht gefunden."
+            )
+
+        rows = conn.execute(
+            """
+            SELECT
+                e.id AS episode_id,
+                e.episode_number,
+                e.title,
+                es.notes
+            FROM episode_sources es
+            JOIN episodes e ON e.id = es.episode_id
+            WHERE es.source_id = ?
+            ORDER BY e.episode_number
+            """,
+            (source_id,)
+        ).fetchall()
+
+    return [dict(row) for row in rows]
+
+
+@app.post("/api/sources/{source_id}/episodes")
+def assign_source_episode(
+    source_id: int,
+    assignment: SourceEpisodeAssignment
+):
+    try:
+        with get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO episode_sources
+                    (episode_id, source_id, notes)
+                VALUES (?, ?, ?)
+                """,
+                (
+                    assignment.episode_id,
+                    source_id,
+                    assignment.notes
+                )
+            )
+
+        return {"message": "Quelle zugeordnet."}
+
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Die Zuordnung existiert bereits oder die Folge bzw. Quelle wurde nicht gefunden."
+        )
+
+
+@app.put("/api/sources/{source_id}/episodes/{episode_id}")
+def update_source_episode_notes(
+    source_id: int,
+    episode_id: int,
+    assignment: SourceEpisodeNotes
+):
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE episode_sources
+            SET notes = ?
+            WHERE source_id = ? AND episode_id = ?
+            """,
+            (assignment.notes, source_id, episode_id)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Assignment not found."
+            )
+
+    return {"message": "Assignment notes updated."}
+
+
+@app.delete("/api/sources/{source_id}/episodes/{episode_id}")
+def remove_source_episode(source_id: int, episode_id: int):
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            DELETE FROM episode_sources
+            WHERE source_id = ? AND episode_id = ?
+            """,
+            (source_id, episode_id)
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Zuordnung nicht gefunden."
+            )
+
+    return {"message": "Zuordnung entfernt."}
+
+
+
+# ============================================================
+# FALLAKTE – WEITERE FIGUREN AUS GEMEINSAMEN HÖRSPIELFOLGEN
+# ============================================================
+
+@app.get("/api/persons/{person_id}/related-figures")
+def get_related_figures(person_id: int):
+    try:
+        with get_connection() as conn:
+
+            person = conn.execute(
+                "SELECT id FROM persons WHERE id = ?",
+                (person_id,)
+            ).fetchone()
+
+            if person is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Figur nicht gefunden."
+                )
+
+            rows = conn.execute(
+                """
+                SELECT
+                    p.id AS person_id,
+                    p.name AS person_name,
+                    p.description AS person_description,
+                    a.alias AS person_alias,
+                    e.id AS episode_id,
+                    e.episode_number,
+                    e.title AS episode_title,
+                    ep.role,
+                    ep.notes
+                FROM episode_persons current_ep
+                JOIN episode_persons ep
+                    ON ep.episode_id = current_ep.episode_id
+                JOIN persons p
+                    ON p.id = ep.person_id
+                JOIN episodes e
+                    ON e.id = ep.episode_id
+                LEFT JOIN person_aliases a
+                    ON a.person_id = p.id
+                WHERE current_ep.person_id = ?
+                  AND ep.person_id != ?
+                ORDER BY
+                    p.name COLLATE NOCASE,
+                    e.episode_number,
+                    a.alias COLLATE NOCASE
+                """,
+                (person_id, person_id)
+            ).fetchall()
+
+            related = {}
+
+            for row in rows:
+                other_id = row["person_id"]
+
+                if other_id not in related:
+                    related[other_id] = {
+                        "person_id": other_id,
+                        "name": row["person_name"],
+                        "description": row["person_description"],
+                        "aliases": [],
+                        "episodes": []
+                    }
+
+                figure = related[other_id]
+
+                if row["person_alias"] and (
+                    row["person_alias"] not in figure["aliases"]
+                ):
+                    figure["aliases"].append(row["person_alias"])
+
+                episode_data = {
+                    "episode_id": row["episode_id"],
+                    "episode_number": row["episode_number"],
+                    "title": row["episode_title"],
+                    "role": row["role"],
+                    "notes": row["notes"]
+                }
+
+                if not any(
+                    episode["episode_id"] == row["episode_id"]
+                    for episode in figure["episodes"]
+                ):
+                    figure["episodes"].append(episode_data)
+
+        return sorted(
+            related.values(),
+            key=lambda figure: figure["name"].casefold()
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=str(error)
+        )
+
+
+# ============================================================
+# GLOBALE ARCHIVSUCHE
+# ============================================================
+
+@app.get("/api/search")
+def global_search(q: str = ""):
+    search_term = q.strip()
+
+    if len(search_term) < 2:
+        return []
+
+    pattern = "%" + search_term + "%"
+
+    try:
+        results = []
+
+        with get_connection() as conn:
+
+            # Hörspielfolgen
+            rows = conn.execute(
+                """
+                SELECT id, episode_number, title, synopsis, notes
+                FROM episodes
+                WHERE title LIKE ?
+                   OR CAST(episode_number AS TEXT) LIKE ?
+                   OR synopsis LIKE ?
+                   OR notes LIKE ?
+                ORDER BY episode_number
+                LIMIT 50
+                """,
+                (pattern, pattern, pattern, pattern)
+            ).fetchall()
+
+            for row in rows:
+                results.append({
+                    "type": "Hörspielfolge",
+                    "id": row["id"],
+                    "title": "Folge " + str(row["episode_number"]) + " – " + row["title"],
+                    "description": row["synopsis"] or row["notes"] or ""
+                })
+
+            # Personen und Figuren einschließlich Aliase
+            rows = conn.execute(
+                """
+                SELECT DISTINCT p.id, p.name, p.description
+                FROM persons p
+                LEFT JOIN person_aliases a ON a.person_id = p.id
+                WHERE p.name LIKE ?
+                   OR p.description LIKE ?
+                   OR a.alias LIKE ?
+                ORDER BY p.name COLLATE NOCASE
+                LIMIT 50
+                """,
+                (pattern, pattern, pattern)
+            ).fetchall()
+
+            for row in rows:
+                results.append({
+                    "type": "Person / Figur",
+                    "id": row["id"],
+                    "title": row["name"],
+                    "description": row["description"] or ""
+                })
+
+            # Sprecher einschließlich alternativer Namen
+            rows = conn.execute(
+                """
+                SELECT DISTINCT s.id, s.name, s.biography, s.notes
+                FROM speakers s
+                LEFT JOIN speaker_aliases a ON a.speaker_id = s.id
+                WHERE s.name LIKE ?
+                   OR s.biography LIKE ?
+                   OR s.notes LIKE ?
+                   OR a.alias LIKE ?
+                ORDER BY s.name COLLATE NOCASE
+                LIMIT 50
+                """,
+                (pattern, pattern, pattern, pattern)
+            ).fetchall()
+
+            for row in rows:
+                results.append({
+                    "type": "Sprecher",
+                    "id": row["id"],
+                    "title": row["name"],
+                    "description": row["biography"] or row["notes"] or ""
+                })
+
+            # Schauplätze
+            rows = conn.execute(
+                """
+                SELECT id, name, description
+                FROM places
+                WHERE name LIKE ? OR description LIKE ?
+                ORDER BY name COLLATE NOCASE
+                LIMIT 50
+                """,
+                (pattern, pattern)
+            ).fetchall()
+
+            for row in rows:
+                results.append({
+                    "type": "Schauplatz",
+                    "id": row["id"],
+                    "title": row["name"],
+                    "description": row["description"] or ""
+                })
+
+            # Gegenstände
+            rows = conn.execute(
+                """
+                SELECT id, name, description
+                FROM objects
+                WHERE name LIKE ? OR description LIKE ?
+                ORDER BY name COLLATE NOCASE
+                LIMIT 50
+                """,
+                (pattern, pattern)
+            ).fetchall()
+
+            for row in rows:
+                results.append({
+                    "type": "Gegenstand",
+                    "id": row["id"],
+                    "title": row["name"],
+                    "description": row["description"] or ""
+                })
+
+            # Kreaturen und Monster
+            rows = conn.execute(
+                """
+                SELECT id, name, description
+                FROM creatures
+                WHERE name LIKE ? OR description LIKE ?
+                ORDER BY name COLLATE NOCASE
+                LIMIT 50
+                """,
+                (pattern, pattern)
+            ).fetchall()
+
+            for row in rows:
+                results.append({
+                    "type": "Kreatur / Monster",
+                    "id": row["id"],
+                    "title": row["name"],
+                    "description": row["description"] or ""
+                })
+
+            # Organisationen
+            rows = conn.execute(
+                """
+                SELECT id, name, description
+                FROM organizations
+                WHERE name LIKE ? OR description LIKE ?
+                ORDER BY name COLLATE NOCASE
+                LIMIT 50
+                """,
+                (pattern, pattern)
+            ).fetchall()
+
+            for row in rows:
+                results.append({
+                    "type": "Organisation",
+                    "id": row["id"],
+                    "title": row["name"],
+                    "description": row["description"] or ""
+                })
+
+            # Schlagwörter
+            rows = conn.execute(
+                """
+                SELECT id, name
+                FROM keywords
+                WHERE name LIKE ?
+                ORDER BY name COLLATE NOCASE
+                LIMIT 50
+                """,
+                (pattern,)
+            ).fetchall()
+
+            for row in rows:
+                results.append({
+                    "type": "Schlagwort",
+                    "id": row["id"],
+                    "title": row["name"],
+                    "description": ""
+                })
+
+            # Quellen
+            rows = conn.execute(
+                """
+                SELECT id, title, source_type, author, url, notes
+                FROM sources
+                WHERE title LIKE ?
+                   OR source_type LIKE ?
+                   OR author LIKE ?
+                   OR url LIKE ?
+                   OR notes LIKE ?
+                ORDER BY title COLLATE NOCASE
+                LIMIT 50
+                """,
+                (pattern, pattern, pattern, pattern, pattern)
+            ).fetchall()
+
+            for row in rows:
+                description_parts = []
+
+                if row["source_type"]:
+                    description_parts.append(row["source_type"])
+
+                if row["author"]:
+                    description_parts.append(row["author"])
+
+                if row["notes"]:
+                    description_parts.append(row["notes"])
+
+                results.append({
+                    "type": "Quelle",
+                    "id": row["id"],
+                    "title": row["title"],
+                    "description": " – ".join(description_parts),
+                    "url": row["url"] or ""
+                })
+
+        return results
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler bei der globalen Suche: " + str(error)
+        )
+
+
+
+# ============================================================
+# PDF-EXPORT ? ERMITTLUNGS- UND FALLAKTEN
+# ============================================================
+
+def generate_casefiles_pdf(output_path, episode_id=None):
+    """
+    Erstellt eine PDF mit einer oder allen vorhandenen Fallakten.
+    Die Daten stammen aus dem bestehenden Fallakten-Endpunkt.
+    Gestaltung: Retro-Polizeiakte (Aktendeckel, Schreibmaschinenschrift,
+    Stempel, Lochung).
+    """
+
+    from pathlib import Path
+    from xml.sax.saxutils import escape
+
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.platypus import (
+        BaseDocTemplate,
+        PageTemplate,
+        Frame,
+        NextPageTemplate,
+        Flowable,
+        Paragraph,
+        Spacer,
+        PageBreak,
+        Table,
+        TableStyle,
+        KeepTogether
+    )
+
+    output_path = Path(output_path)
+
+    if episode_id is None:
+        episodes = list_episodes()
+
+        if not episodes:
+            raise ValueError(
+                "Es sind noch keine Hörspielfolgen vorhanden. "
+                "Der Gesamtexport wurde nicht erstellt."
+            )
+
+        episode_ids = [episode["id"] for episode in episodes]
+
+    else:
+        data = get_episode_casefile(int(episode_id))
+        episode_ids = [int(episode_id)]
+
+    # --------------------------------------------------------
+    # Schriftarten: Schreibmaschine (Courier New) mit Umlauten.
+    # Ersatz: eingebaute Courier-Schrift (unterstützt ebenfalls
+    # deutsche Umlaute).
+    # --------------------------------------------------------
+    font_regular = "Courier"
+    font_bold = "Courier-Bold"
+
+    regular_path = Path(r"C:\Windows\Fonts\cour.ttf")
+    bold_path = Path(r"C:\Windows\Fonts\courbd.ttf")
+
+    if regular_path.exists() and bold_path.exists():
+        try:
+            if "TypewriterArchive" not in pdfmetrics.getRegisteredFontNames():
+                pdfmetrics.registerFont(
+                    TTFont("TypewriterArchive", str(regular_path))
+                )
+                pdfmetrics.registerFont(
+                    TTFont("TypewriterArchive-Bold", str(bold_path))
+                )
+
+            font_regular = "TypewriterArchive"
+            font_bold = "TypewriterArchive-Bold"
+        except Exception:
+            pass
+
+    # --------------------------------------------------------
+    # Farben der Retro-Akte
+    # --------------------------------------------------------
+    folder_color = colors.HexColor("#E3CC9A")    # Aktendeckel (Manila)
+    folder_dark = colors.HexColor("#C9AE74")     # Kante / Reiter
+    paper_color = colors.HexColor("#F4EDDC")     # vergilbtes Papier
+    ink_color = colors.HexColor("#2A2622")       # Schreibmaschinentinte
+    faded_ink = colors.HexColor("#6B6155")       # verblasste Tinte
+    rule_color = colors.HexColor("#9C8A68")      # Linien
+    label_color = colors.HexColor("#E9DDBF")     # Formularfelder
+    stamp_red = colors.HexColor("#A8261D")       # Stempelfarbe
+
+    page_width, page_height = A4
+
+    styles = getSampleStyleSheet()
+
+    styles.add(ParagraphStyle(
+        name="RetroAuthority",
+        parent=styles["Normal"],
+        fontName=font_bold,
+        fontSize=11,
+        leading=14,
+        alignment=TA_CENTER,
+        textColor=ink_color
+    ))
+
+    styles.add(ParagraphStyle(
+        name="RetroAuthoritySmall",
+        parent=styles["Normal"],
+        fontName=font_regular,
+        fontSize=8.5,
+        leading=11,
+        alignment=TA_CENTER,
+        textColor=faded_ink
+    ))
+
+    styles.add(ParagraphStyle(
+        name="RetroCoverTitle",
+        parent=styles["Title"],
+        fontName=font_bold,
+        fontSize=30,
+        leading=36,
+        alignment=TA_CENTER,
+        textColor=ink_color,
+        spaceAfter=2 * mm
+    ))
+
+    styles.add(ParagraphStyle(
+        name="RetroCoverCase",
+        parent=styles["Normal"],
+        fontName=font_bold,
+        fontSize=14,
+        leading=18,
+        alignment=TA_CENTER,
+        textColor=ink_color
+    ))
+
+    styles.add(ParagraphStyle(
+        name="RetroCoverEpisode",
+        parent=styles["Normal"],
+        fontName=font_bold,
+        fontSize=15,
+        leading=20,
+        alignment=TA_CENTER,
+        textColor=ink_color
+    ))
+
+    styles.add(ParagraphStyle(
+        name="RetroPageTitle",
+        parent=styles["Normal"],
+        fontName=font_bold,
+        fontSize=14,
+        leading=18,
+        textColor=ink_color,
+        spaceAfter=1 * mm
+    ))
+
+    styles.add(ParagraphStyle(
+        name="RetroSection",
+        parent=styles["Normal"],
+        fontName=font_bold,
+        fontSize=10.5,
+        leading=13,
+        textColor=paper_color
+    ))
+
+    styles.add(ParagraphStyle(
+        name="RetroText",
+        parent=styles["BodyText"],
+        fontName=font_regular,
+        fontSize=9,
+        leading=12.5,
+        textColor=ink_color,
+        spaceAfter=1.5 * mm
+    ))
+
+    styles.add(ParagraphStyle(
+        name="RetroEntryName",
+        parent=styles["BodyText"],
+        fontName=font_bold,
+        fontSize=9.5,
+        leading=12.5,
+        textColor=ink_color,
+        spaceAfter=0.8 * mm
+    ))
+
+    styles.add(ParagraphStyle(
+        name="RetroSmall",
+        parent=styles["BodyText"],
+        fontName=font_regular,
+        fontSize=8.5,
+        leading=11.5,
+        textColor=ink_color,
+        spaceAfter=0.6 * mm
+    ))
+
+    styles.add(ParagraphStyle(
+        name="RetroEmpty",
+        parent=styles["BodyText"],
+        fontName=font_regular,
+        fontSize=8.5,
+        leading=11,
+        textColor=faded_ink,
+        spaceAfter=1 * mm
+    ))
+
+    styles.add(ParagraphStyle(
+        name="RetroFormLabel",
+        parent=styles["BodyText"],
+        fontName=font_bold,
+        fontSize=8,
+        leading=10.5,
+        textColor=faded_ink
+    ))
+
+    styles.add(ParagraphStyle(
+        name="RetroFormValue",
+        parent=styles["BodyText"],
+        fontName=font_regular,
+        fontSize=10,
+        leading=13,
+        textColor=ink_color
+    ))
+
+    def safe(value):
+        if value is None or str(value).strip() == "":
+            return "?"
+
+        return escape(str(value)).replace("\n", "<br/>")
+
+    def label_text(label):
+        return f'<font name="{font_bold}">{escape(label)}:</font>'
+
+    # --------------------------------------------------------
+    # Hilfselemente
+    # --------------------------------------------------------
+    class CaseMarker(Flowable):
+        """Merkt sich das aktuelle Aktenzeichen für Kopf- und Fußzeilen."""
+
+        def __init__(self, case_number):
+            super().__init__()
+            self.case_number = case_number
+
+        def wrap(self, available_width, available_height):
+            return 0, 0
+
+        def draw(self):
+            document.current_case = self.case_number
+
+    def section_bar(title):
+        bar = Table(
+            [[Paragraph(escape(title), styles["RetroSection"])]],
+            colWidths=[document.width]
+        )
+
+        bar.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), ink_color),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4)
+        ]))
+
+        return bar
+
+    def add_field(story, label, value):
+        if value is None or str(value).strip() == "":
+            return
+
+        story.append(Paragraph(
+            f"{label_text(label)} {safe(value)}",
+            styles["RetroText"]
+        ))
+
+    def add_section(story, title, entries, fields):
+        heading = [Spacer(1, 6 * mm), section_bar(title), Spacer(1, 2.5 * mm)]
+
+        if not entries:
+            story.append(KeepTogether(heading + [Paragraph(
+                "– Keine Einträge vorhanden –",
+                styles["RetroEmpty"]
+            )]))
+            return
+
+        first = True
+
+        for entry in entries:
+            name = (
+                entry.get("name")
+                or entry.get("title")
+                or entry.get("speaker_name")
+                or "Ohne Bezeichnung"
+            )
+
+            content = [Paragraph(safe(name).upper(), styles["RetroEntryName"])]
+
+            for field, label in fields:
+                value = entry.get(field)
+
+                if value is not None and str(value).strip():
+                    content.append(Paragraph(
+                        f"{label_text(label)} {safe(value)}",
+                        styles["RetroSmall"]
+                    ))
+
+            card = Table([[content]], colWidths=[document.width])
+
+            card.setStyle(TableStyle([
+                ("LINEBEFORE", (0, 0), (0, -1), 2, rule_color),
+                ("LINEBELOW", (0, 0), (-1, -1), 0.4, rule_color, None, (2, 2)),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5)
+            ]))
+
+            if first:
+                story.append(KeepTogether(heading + [card]))
+                first = False
+            else:
+                story.append(card)
+
+            story.append(Spacer(1, 2 * mm))
+
+    # --------------------------------------------------------
+    # Seitenhintergründe
+    # --------------------------------------------------------
+    def draw_punch_holes(canvas):
+        canvas.setFillColor(colors.HexColor("#FBF8F1"))
+        canvas.setStrokeColor(rule_color)
+        canvas.setLineWidth(0.6)
+
+        for offset in (-40 * mm, 40 * mm):
+            canvas.circle(9 * mm, page_height / 2 + offset, 2.8 * mm,
+                          stroke=1, fill=1)
+
+    def draw_stamp(canvas, text, x, y, angle, size):
+        canvas.saveState()
+        canvas.translate(x, y)
+        canvas.rotate(angle)
+
+        canvas.setFont(font_bold, size)
+        text_width = pdfmetrics.stringWidth(text, font_bold, size)
+        box_width = text_width + size * 1.4
+        box_height = size * 1.9
+
+        canvas.setStrokeColor(stamp_red)
+        canvas.setFillColor(stamp_red)
+        canvas.setStrokeAlpha(0.82)
+        canvas.setFillAlpha(0.82)
+
+        canvas.setLineWidth(2.2)
+        canvas.roundRect(-box_width / 2, -box_height / 2,
+                         box_width, box_height, 3, stroke=1, fill=0)
+        canvas.setLineWidth(0.8)
+        canvas.roundRect(-box_width / 2 + 3, -box_height / 2 + 3,
+                         box_width - 6, box_height - 6, 2, stroke=1, fill=0)
+
+        canvas.drawCentredString(0, -size * 0.35, text)
+        canvas.restoreState()
+
+    def draw_cover(canvas, doc):
+        canvas.saveState()
+
+        # Aktendeckel
+        canvas.setFillColor(folder_color)
+        canvas.rect(0, 0, page_width, page_height, stroke=0, fill=1)
+
+        # Reiter oben rechts
+        canvas.setFillColor(folder_dark)
+        tab = canvas.beginPath()
+        tab.moveTo(page_width - 95 * mm, page_height)
+        tab.lineTo(page_width - 90 * mm, page_height - 12 * mm)
+        tab.lineTo(page_width - 22 * mm, page_height - 12 * mm)
+        tab.lineTo(page_width - 17 * mm, page_height)
+        tab.close()
+        canvas.drawPath(tab, stroke=0, fill=1)
+
+        canvas.setFont(font_bold, 11)
+        canvas.setFillColor(ink_color)
+        canvas.drawCentredString(
+            page_width - 56 * mm,
+            page_height - 8 * mm,
+            f"AZ {getattr(doc, 'next_case', '')}"
+        )
+
+        # Doppelter Rahmen
+        canvas.setStrokeColor(ink_color)
+        canvas.setLineWidth(1.4)
+        canvas.rect(16 * mm, 16 * mm,
+                    page_width - 32 * mm, page_height - 36 * mm)
+        canvas.setLineWidth(0.5)
+        canvas.rect(18 * mm, 18 * mm,
+                    page_width - 36 * mm, page_height - 40 * mm)
+
+        draw_punch_holes(canvas)
+
+        # Stempel
+        draw_stamp(canvas, "VERTRAULICH",
+                   page_width - 62 * mm, 52 * mm, 14, 20)
+
+        canvas.setFont(font_regular, 7.5)
+        canvas.setFillColor(faded_ink)
+        canvas.drawCentredString(
+            page_width / 2, 11 * mm,
+            "Nur für den Dienstgebrauch · Weitergabe an Unbefugte untersagt"
+        )
+
+        canvas.restoreState()
+
+    def draw_content_page(canvas, doc):
+        canvas.saveState()
+
+        canvas.setFillColor(paper_color)
+        canvas.rect(0, 0, page_width, page_height, stroke=0, fill=1)
+
+        draw_punch_holes(canvas)
+
+        case_number = getattr(doc, "current_case", "")
+
+        # Kopfzeile
+        canvas.setFont(font_bold, 8.5)
+        canvas.setFillColor(ink_color)
+        canvas.drawString(22 * mm, page_height - 13 * mm,
+                          "ERMITTLUNGSAKTE")
+        canvas.setFont(font_regular, 8.5)
+        canvas.drawString(22 * mm + pdfmetrics.stringWidth(
+            "ERMITTLUNGSAKTE  ", font_bold, 8.5),
+            page_height - 13 * mm, f"AZ {case_number}")
+
+        canvas.setFillColor(stamp_red)
+        canvas.setFont(font_bold, 8.5)
+        canvas.drawRightString(page_width - 18 * mm,
+                               page_height - 13 * mm, "VERTRAULICH")
+
+        canvas.setStrokeColor(ink_color)
+        canvas.setLineWidth(0.8)
+        canvas.line(22 * mm, page_height - 15.5 * mm,
+                    page_width - 18 * mm, page_height - 15.5 * mm)
+        canvas.setLineWidth(0.3)
+        canvas.line(22 * mm, page_height - 16.5 * mm,
+                    page_width - 18 * mm, page_height - 16.5 * mm)
+
+        # Fußzeile
+        canvas.setStrokeColor(rule_color)
+        canvas.setLineWidth(0.5)
+        canvas.line(22 * mm, 15 * mm, page_width - 18 * mm, 15 * mm)
+
+        canvas.setFont(font_regular, 7.5)
+        canvas.setFillColor(faded_ink)
+        canvas.drawString(22 * mm, 10 * mm,
+                          "DIE DREI ??? – INTERNES ARCHIVSYSTEM")
+        canvas.drawRightString(page_width - 18 * mm, 10 * mm,
+                               f"Blatt {doc.page}")
+
+        canvas.restoreState()
+
+    # --------------------------------------------------------
+    # Dokument mit zwei Seitenvorlagen (Deckblatt / Inhalt)
+    # --------------------------------------------------------
+    document = BaseDocTemplate(
+        str(output_path),
+        pagesize=A4,
+        rightMargin=18 * mm,
+        leftMargin=22 * mm,
+        topMargin=22 * mm,
+        bottomMargin=22 * mm,
+        title="Die drei ??? – Fallakten",
+        author="Die drei ??? – Archivverwaltung"
+    )
+
+    document.current_case = ""
+    document.next_case = ""
+
+    cover_frame = Frame(
+        24 * mm, 24 * mm,
+        page_width - 48 * mm, page_height - 52 * mm,
+        id="cover"
+    )
+
+    content_frame = Frame(
+        document.leftMargin, document.bottomMargin,
+        document.width, document.height,
+        id="content"
+    )
+
+    def before_cover(canvas, doc):
+        doc.next_case = doc.case_queue.pop(0) if doc.case_queue else ""
+
+    document.addPageTemplates([
+        PageTemplate(id="Cover", frames=[cover_frame],
+                     onPage=lambda c, d: (before_cover(c, d), draw_cover(c, d))),
+        PageTemplate(id="Content", frames=[content_frame],
+                     onPage=draw_content_page)
+    ])
+
+    document.case_queue = []
+
+    story = []
+
+    for index, current_id in enumerate(episode_ids):
+        data = get_episode_casefile(current_id)
+        episode = data["episode"]
+
+        number = episode.get("episode_number", "?")
+        title = episode.get("title", "Ohne Titel")
+        case_number = f"DFD-{number}"
+
+        document.case_queue.append(case_number)
+
+        # ---------------- Deckblatt ----------------
+        story.append(CaseMarker(case_number))
+        story.append(Spacer(1, 10 * mm))
+
+        story.append(Paragraph(
+            "POLIZEIREVIER ROCKY BEACH",
+            styles["RetroAuthority"]
+        ))
+
+        story.append(Paragraph(
+            "Kriminalabteilung · Aktenarchiv",
+            styles["RetroAuthoritySmall"]
+        ))
+
+        story.append(Spacer(1, 22 * mm))
+
+        story.append(Paragraph("ERMITTLUNGSAKTE", styles["RetroCoverTitle"]))
+
+        story.append(Paragraph(
+            f"FALLAKTE NR. {safe(number)}",
+            styles["RetroCoverCase"]
+        ))
+
+        story.append(Spacer(1, 12 * mm))
+
+        title_box = Table(
+            [[Paragraph(f"»{safe(title)}«", styles["RetroCoverEpisode"])]],
+            colWidths=[130 * mm]
+        )
+
+        title_box.setStyle(TableStyle([
+            ("BOX", (0, 0), (-1, -1), 1.2, ink_color),
+            ("BACKGROUND", (0, 0), (-1, -1), paper_color),
+            ("TOPPADDING", (0, 0), (-1, -1), 9),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 11),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 10)
+        ]))
+
+        story.append(title_box)
+        story.append(Spacer(1, 14 * mm))
+
+        cover_data = [
+            ["AKTENZEICHEN", case_number],
+            ["FOLGENNUMMER", str(number)],
+            ["ORIGINALTITEL", str(title)],
+            ["VERÖFFENTLICHUNG", str(episode.get("release_date") or "?")],
+            ["LAUFZEIT", (
+                f"{episode['runtime_minutes']} Minuten"
+                if episode.get("runtime_minutes") else "?"
+            )],
+            ["ERMITTLER", "Die drei ???"]
+        ]
+
+        form = Table(
+            [
+                [
+                    Paragraph(escape(label), styles["RetroFormLabel"]),
+                    Paragraph(safe(value), styles["RetroFormValue"])
+                ]
+                for label, value in cover_data
+            ],
+            colWidths=[44 * mm, 100 * mm]
+        )
+
+        form.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (0, -1), label_color),
+            ("BACKGROUND", (1, 0), (1, -1), paper_color),
+            ("BOX", (0, 0), (-1, -1), 1, ink_color),
+            ("INNERGRID", (0, 0), (-1, -1), 0.4, rule_color),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 7),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6)
+        ]))
+
+        story.append(form)
+
+        story.append(NextPageTemplate("Content"))
+        story.append(PageBreak())
+
+        # ---------------- Inhaltsseiten ----------------
+        story.append(Paragraph(
+            f"FALLAKTE {safe(number)} – {safe(title).upper()}",
+            styles["RetroPageTitle"]
+        ))
+
+        story.append(KeepTogether([
+            Spacer(1, 3 * mm),
+            section_bar("1. FALLBESCHREIBUNG"),
+            Spacer(1, 2.5 * mm)
+        ]))
+
+        add_field(story, "Folgenummer", number)
+        add_field(story, "Originaltitel", title)
+        add_field(story, "Veröffentlichung", episode.get("release_date"))
+
+        if episode.get("runtime_minutes"):
+            add_field(
+                story,
+                "Laufzeit",
+                f"{episode['runtime_minutes']} Minuten"
+            )
+
+        add_field(story, "Zusammenfassung", episode.get("synopsis"))
+        add_field(story, "Interne Notizen", episode.get("notes"))
+
+        # Verknüpfte Archivbestände
+        add_section(
+            story,
+            "2. FIGUREN",
+            data.get("persons", []),
+            [
+                ("role", "Rolle"),
+                ("aliases", "Weitere Namen"),
+                ("description", "Beschreibung"),
+                ("notes", "Fallbezogene Notizen")
+            ]
+        )
+
+        add_section(
+            story,
+            "3. SPRECHER",
+            data.get("speakers", []),
+            [
+                ("speaker_name", "Sprecher"),
+                ("person_name", "Dargestellte Figur"),
+                ("biography", "Biografie"),
+                ("aliases", "Weitere Namen"),
+                ("speaker_notes", "Sprecher-Notizen"),
+                ("role_notes", "Rollen-Notizen")
+            ]
+        )
+
+        add_section(
+            story,
+            "4. SCHAUPLÄTZE",
+            data.get("places", []),
+            [
+                ("description", "Beschreibung"),
+                ("notes", "Fallbezogene Notizen")
+            ]
+        )
+
+        add_section(
+            story,
+            "5. GEGENSTÄNDE",
+            data.get("objects", []),
+            [
+                ("description", "Beschreibung"),
+                ("notes", "Fallbezogene Notizen")
+            ]
+        )
+
+        add_section(
+            story,
+            "6. KREATUREN UND MONSTER",
+            data.get("creatures", []),
+            [
+                ("description", "Beschreibung"),
+                ("notes", "Fallbezogene Notizen")
+            ]
+        )
+
+        add_section(
+            story,
+            "7. ORGANISATIONEN",
+            data.get("organizations", []),
+            [
+                ("description", "Beschreibung"),
+                ("notes", "Fallbezogene Notizen")
+            ]
+        )
+
+        add_section(
+            story,
+            "8. SCHLAGWÖRTER",
+            data.get("keywords", []),
+            []
+        )
+
+        add_section(
+            story,
+            "9. QUELLEN UND BELEGE",
+            data.get("sources", []),
+            [
+                ("source_type", "Quellentyp"),
+                ("author", "Autor"),
+                ("publication_date", "Erscheinungsdatum"),
+                ("url", "Internetadresse"),
+                ("notes", "Quellen-Notizen"),
+                ("assignment_notes", "Fallbezogene Quellen-Notizen")
+            ]
+        )
+
+        if index < len(episode_ids) - 1:
+            story.append(NextPageTemplate("Cover"))
+            story.append(PageBreak())
+
+    document.build(story)
+
+    return str(output_path)
