@@ -1,4 +1,4 @@
-<img width="1080" height="1350" alt="Archivverwaltung GitHub Teaserbild" src="https://github.com/user-attachments/assets/c1fffbc1-cf31-4b2f-b174-196192b79c53" />
+
 Die Drei ??? – Archivverwaltung
 
 Eine eigenständige Archivverwaltung für alle, die sich intensiver mit den Hörspielfolgen der **Die drei ???** beschäftigen und Informationen rund um die Serie strukturiert erfassen, verwalten und miteinander verknüpfen möchten.
