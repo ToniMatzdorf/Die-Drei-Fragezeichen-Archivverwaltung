@@ -1,7 +1,10 @@
 
 Die Drei ??? – Archivverwaltung
 
-Eine eigenständige Archivverwaltung für alle, die sich intensiver mit den Hörspielfolgen der **Die drei ???** beschäftigen und Informationen rund um die Serie strukturiert erfassen, verwalten und miteinander verknüpfen möchten.
+Eine eigenständige Archivverwaltung für alle, die sich intensiver mit den Hörspielfolgen der **Die drei ???** beschäftigen und Informationen rund um die Serie strukturiert erfassen, verwalten und miteinander verknüpfen möchten. Dieses Projekt ist eine privat und unabhängig entwickelte Fanplattform zur Dokumentation, Recherche und Verwaltung von Informationen rund um die Hörspiel- und Buchreihe Die drei ???.
+Es handelt sich ausdrücklich um ein nicht-kommerzielles Fanprojekt, das von Fans für Fans entwickelt und betrieben wird.
+Das Projekt steht in keinerlei Verbindung zu EUROPA (Sony Music Entertainment) oder KOSMOS (Franckh-Kosmos Verlags-GmbH & Co. KG).
+Alle genannten Marken, Logos, Figuren, Titel und sonstigen geschützten Bezeichnungen verbleiben bei ihren jeweiligen Rechteinhabern. Ihre Verwendung dient ausschließlich der thematischen Einordnung und Identifikation der dokumentierten Inhalte.Diese Plattform ist kein offizielles Angebot der Rechteinhaber und erhebt keinen Anspruch darauf, eine offizielle Datenbank, ein offizielles Archiv oder eine von EUROPA bzw. KOSMOS autorisierte Informationsquelle darzustellen.
 
 Über das Projekt
 
